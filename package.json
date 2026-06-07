@@ -1,0 +1,38 @@
+{
+  "name": "cybercompanion",
+  "version": "1.0.0",
+  "description": "CyberCompanion — An interactive, offline educational guide for Web Application Penetration Testing",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "cybersecurity",
+    "penetration-testing",
+    "electron",
+    "education"
+  ],
+  "author": "CyberAcademy",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^42.3.3",
+    "electron-builder": "^26.15.0"
+  },
+  "build": {
+    "appId": "com.cyberacademy.companion",
+    "productName": "CyberCompanion",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
