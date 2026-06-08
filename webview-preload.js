@@ -416,6 +416,8 @@ class TutorialEngine {
 
 const tutorialEngine = new TutorialEngine();
 
-ipcRenderer.on('play-tutorial', (event, steps) => {
-  tutorialEngine.play(steps);
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'play-tutorial') {
+    tutorialEngine.play(event.data.steps);
+  }
 });

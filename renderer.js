@@ -856,7 +856,7 @@ function startTutorial(tutorialKey) {
       // Execute JS in webview to change hash
       webviewEl.executeJavaScript(`window.location.hash = '${tut.steps[0].hash}';`);
     }
-    webviewEl.send('play-tutorial', tut.steps);
+    webviewEl.executeJavaScript(`window.postMessage({ type: 'play-tutorial', steps: ${JSON.stringify(tut.steps)} }, '*');`);
   };
 
   if (webviewLoading.style.display === 'flex') {
