@@ -849,14 +849,265 @@ function startTutorial(tutorialKey) {
   
   const tut = window.TUTORIALS[tutorialKey];
   
-  // Wait a bit if webview is just loading
-  const play = () => {
-    // If the first step has a hash, let's navigate there
-    if (tut.steps[0] && tut.steps[0].hash) {
-      // Execute JS in webview to change hash
-      webviewEl.executeJavaScript(`window.location.hash = '${tut.steps[0].hash}';`);
+  // The entire tutorial engine is injected directly into the Juice Shop page
+  // via executeJavaScript. This runs in the page's main world, so it has
+  // full DOM access. We cannot rely on preload scripts because they run
+  // in an isolated context.
+  const tutorialEngineCode = `
+(function() {
+  // Prevent double-injection
+  if (window.__cyberTutorialEngine) {
+    window.__cyberTutorialEngine.play(${JSON.stringify(tut.steps)});
+    return;
+  }
+
+  // --- Inject CSS ---
+  var style = document.createElement('style');
+  style.textContent = \`
+    #cyber-tut-backdrop {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.65); z-index: 999990;
+      pointer-events: none;
+      display: block; transition: clip-path 0.4s ease;
     }
-    webviewEl.executeJavaScript(`window.postMessage({ type: 'play-tutorial', steps: ${JSON.stringify(tut.steps)} }, '*');`);
+    #cyber-tut-bubble {
+      position: fixed; z-index: 999999;
+      background: linear-gradient(135deg, rgba(10, 14, 23, 0.97), rgba(17, 24, 39, 0.97));
+      border: 2px solid rgba(0, 240, 255, 0.5);
+      border-radius: 12px; padding: 20px 24px;
+      color: #e2e8f0; font-family: 'Inter', 'Segoe UI', sans-serif;
+      font-size: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(0,240,255,0.15);
+      max-width: 340px; min-width: 240px;
+      pointer-events: auto;
+    }
+    #cyber-tut-bubble .tut-step-badge {
+      display: inline-block; font-weight: 700; color: #00f0ff;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+      margin-bottom: 10px; padding: 3px 8px;
+      background: rgba(0,240,255,0.1); border-radius: 4px;
+    }
+    #cyber-tut-bubble .tut-text {
+      line-height: 1.6; font-size: 14px; color: #cbd5e1;
+    }
+    #cyber-tut-bubble .tut-skip-btn {
+      margin-top: 14px; display: flex; gap: 8px;
+    }
+    #cyber-tut-bubble .tut-btn {
+      flex: 1; padding: 8px 12px; border-radius: 6px; cursor: pointer;
+      font-size: 12px; font-weight: 600; text-align: center; border: none;
+      transition: all 0.15s ease;
+    }
+    #cyber-tut-bubble .tut-btn-primary {
+      background: rgba(0,240,255,0.15); border: 1px solid #00f0ff; color: #00f0ff;
+    }
+    #cyber-tut-bubble .tut-btn-primary:hover { background: rgba(0,240,255,0.25); }
+    #cyber-tut-bubble .tut-btn-secondary {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #94a3b8;
+    }
+    #cyber-tut-bubble .tut-btn-secondary:hover { background: rgba(255,255,255,0.1); color: #e2e8f0; }
+    .cyber-tut-highlight {
+      position: relative !important; z-index: 999995 !important;
+      box-shadow: 0 0 0 4px rgba(0,240,255,0.4), 0 0 20px rgba(0,240,255,0.2) !important;
+      border-radius: 4px;
+    }
+    #cyber-tut-arrow {
+      position: fixed; z-index: 999998;
+      width: 0; height: 0; pointer-events: none;
+    }
+  \`;
+  document.head.appendChild(style);
+
+  // --- Create DOM elements ---
+  var backdrop = document.createElement('div');
+  backdrop.id = 'cyber-tut-backdrop';
+  document.body.appendChild(backdrop);
+
+  var bubble = document.createElement('div');
+  bubble.id = 'cyber-tut-bubble';
+  bubble.style.display = 'none';
+  document.body.appendChild(bubble);
+
+  // --- Engine ---
+  var engine = {
+    steps: [],
+    current: 0,
+    retryCount: 0,
+    maxRetries: 20,
+    active: false,
+
+    play: function(steps) {
+      this.steps = steps;
+      this.current = 0;
+      this.active = true;
+      this.retryCount = 0;
+      backdrop.style.display = 'block';
+      this.showStep();
+    },
+
+    stop: function() {
+      this.active = false;
+      backdrop.style.display = 'none';
+      bubble.style.display = 'none';
+      this.clearHighlight();
+    },
+
+    clearHighlight: function() {
+      var els = document.querySelectorAll('.cyber-tut-highlight');
+      for (var i = 0; i < els.length; i++) {
+        els[i].classList.remove('cyber-tut-highlight');
+      }
+      backdrop.style.clipPath = 'none';
+    },
+
+    showStep: function() {
+      var self = this;
+      if (this.current >= this.steps.length) {
+        // Tutorial complete!
+        bubble.innerHTML = '<div class="tut-step-badge">Tutorial Complete!</div>' +
+          '<div class="tut-text">Congratulations! You have completed the tutorial.</div>' +
+          '<div class="tut-skip-btn"><button class="tut-btn tut-btn-primary" id="tut-done-btn">Done</button></div>';
+        bubble.style.display = 'block';
+        bubble.style.top = '50%';
+        bubble.style.left = '50%';
+        bubble.style.transform = 'translate(-50%, -50%)';
+        document.getElementById('tut-done-btn').onclick = function() { self.stop(); };
+        return;
+      }
+
+      var step = this.steps[this.current];
+      this.clearHighlight();
+
+      // Find target element
+      var target = null;
+      if (step.selector === 'body') {
+        target = document.body;
+      } else {
+        target = document.querySelector(step.selector);
+      }
+
+      if (!target) {
+        this.retryCount++;
+        if (this.retryCount < this.maxRetries) {
+          setTimeout(function() { self.showStep(); }, 500);
+        } else {
+          // Skip this step after too many retries
+          this.retryCount = 0;
+          this.current++;
+          this.showStep();
+        }
+        return;
+      }
+      this.retryCount = 0;
+
+      // Highlight the target
+      if (target !== document.body) {
+        target.classList.add('cyber-tut-highlight');
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Cut hole in backdrop
+        setTimeout(function() {
+          var rect = target.getBoundingClientRect();
+          var pad = 6;
+          var top = rect.top - pad, left = rect.left - pad;
+          var right = rect.right + pad, bottom = rect.bottom + pad;
+          backdrop.style.clipPath = 'polygon(' +
+            '0% 0%, 0% 100%, ' +
+            left + 'px 100%, ' +
+            left + 'px ' + top + 'px, ' +
+            right + 'px ' + top + 'px, ' +
+            right + 'px ' + bottom + 'px, ' +
+            left + 'px ' + bottom + 'px, ' +
+            left + 'px 100%, ' +
+            '100% 100%, 100% 0%)';
+        }, 100);
+      } else {
+        backdrop.style.clipPath = 'none';
+      }
+
+      // Render bubble content
+      bubble.style.transform = 'none';
+      bubble.innerHTML =
+        '<div class="tut-step-badge">Step ' + (this.current + 1) + ' of ' + this.steps.length + '</div>' +
+        '<div class="tut-text">' + step.text + '</div>' +
+        '<div class="tut-skip-btn">' +
+          '<button class="tut-btn tut-btn-secondary" id="tut-skip-btn">Skip</button>' +
+          '<button class="tut-btn tut-btn-primary" id="tut-next-btn">Next</button>' +
+        '</div>';
+      bubble.style.display = 'block';
+
+      document.getElementById('tut-skip-btn').onclick = function() { self.stop(); };
+      document.getElementById('tut-next-btn').onclick = function() { self.advance(); };
+
+      // Position the bubble near the target
+      setTimeout(function() {
+        var tRect = target.getBoundingClientRect();
+        var bRect = bubble.getBoundingClientRect();
+
+        var bTop, bLeft;
+        var pos = step.position || 'bottom';
+
+        if (target === document.body || pos === 'center') {
+          bTop = window.innerHeight / 2 - bRect.height / 2;
+          bLeft = window.innerWidth / 2 - bRect.width / 2;
+        } else if (pos === 'right') {
+          bTop = tRect.top;
+          bLeft = tRect.right + 14;
+        } else if (pos === 'left') {
+          bTop = tRect.top;
+          bLeft = tRect.left - bRect.width - 14;
+        } else if (pos === 'top') {
+          bTop = tRect.top - bRect.height - 14;
+          bLeft = tRect.left;
+        } else {
+          // bottom (default)
+          bTop = tRect.bottom + 14;
+          bLeft = tRect.left;
+        }
+
+        // Clamp to viewport
+        if (bLeft + bRect.width > window.innerWidth - 10) bLeft = window.innerWidth - bRect.width - 10;
+        if (bTop + bRect.height > window.innerHeight - 10) bTop = tRect.top - bRect.height - 14;
+        if (bLeft < 10) bLeft = 10;
+        if (bTop < 10) bTop = 10;
+
+        bubble.style.top = bTop + 'px';
+        bubble.style.left = bLeft + 'px';
+      }, 150);
+
+      // Also listen for user performing the action to auto-advance
+      if (step.action === 'click' && target !== document.body) {
+        var clickHandler = function() {
+          target.removeEventListener('click', clickHandler);
+          self.advance();
+        };
+        target.addEventListener('click', clickHandler);
+      }
+    },
+
+    advance: function() {
+      this.current++;
+      this.retryCount = 0;
+      this.showStep();
+    }
+  };
+
+  window.__cyberTutorialEngine = engine;
+  engine.play(${JSON.stringify(tut.steps)});
+})();
+`;
+
+  const play = () => {
+    // If the first step has a hash, navigate there first
+    if (tut.steps[0] && tut.steps[0].hash) {
+      webviewEl.executeJavaScript(`window.location.hash = '${tut.steps[0].hash}';`);
+      // Give Juice Shop a moment to route, then inject
+      setTimeout(() => {
+        webviewEl.executeJavaScript(tutorialEngineCode);
+      }, 1500);
+    } else {
+      webviewEl.executeJavaScript(tutorialEngineCode);
+    }
   };
 
   if (webviewLoading.style.display === 'flex') {
