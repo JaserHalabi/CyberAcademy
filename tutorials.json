@@ -104,17 +104,29 @@
         "position": "bottom"
       },
       {
-        "text": "A single quote (') usually breaks SQL syntax if the input is not properly escaped. Type a single quote character: '",
+        "text": "A single quote (') usually breaks SQL syntax. Type a single quote character: '",
         "selector": "#searchQuery",
         "action": "input",
         "waitForValue": "'",
         "position": "bottom"
       },
       {
-        "text": "Press Enter to search. The server will throw a SQLITE_ERROR in the response, proving the input reaches the database unsanitized!",
+        "text": "Before we press Enter, let's open our hacker tools! Click the 'DevTools' button in the Mission Control header at the top right of the application.",
+        "selector": "body",
+        "action": "click",
+        "position": "center"
+      },
+      {
+        "text": "In the DevTools panel that opened, click on the 'Network' tab. Then press Enter in the search box to trigger the search.",
         "selector": "#searchQuery",
         "action": "enter",
         "position": "bottom"
+      },
+      {
+        "text": "The UI handles the error silently, but the network tab doesn't lie! Look for the red failing request to '/api/Challenges' or '/rest/products/search'. Click it and look at its 'Response'. You'll see a raw SQLITE_ERROR, proving the app is vulnerable!",
+        "selector": "body",
+        "action": "click",
+        "position": "center"
       }
     ]
   },
@@ -164,7 +176,7 @@
         "position": "bottom"
       },
       {
-        "text": "Now type the XSS payload:  <iframe src=\"javascript:alert('xss')\">",
+        "text": "Now type the XSS payload: <code>&lt;iframe src=\"javascript:alert('xss')\"&gt;</code>",
         "selector": "#searchQuery",
         "action": "input",
         "waitForValue": "<iframe src=\"javascript:alert('xss')\">",
@@ -191,7 +203,7 @@
         "position": "bottom"
       },
       {
-        "text": "We will use an iframe payload. The client-side router reflects this into the DOM directly. Type:  <iframe src=\"javascript:alert('xss')\">",
+        "text": "We will use an iframe payload. The client-side router reflects this into the DOM directly. Type: <code>&lt;iframe src=\"javascript:alert('xss')\"&gt;</code>",
         "selector": "#searchQuery",
         "action": "input",
         "waitForValue": "<iframe src=\"javascript:alert('xss')\">",

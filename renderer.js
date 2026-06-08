@@ -904,6 +904,17 @@ function initLabMode() {
   if (window.__overlay) {
     window.__overlay.init(webviewEl);
   }
+
+  const btnDevTools = document.getElementById('btnDevTools');
+  if (btnDevTools) {
+    btnDevTools.onclick = () => {
+      if (webviewEl.isDevToolsOpened()) {
+        webviewEl.closeDevTools();
+      } else {
+        webviewEl.openDevTools();
+      }
+    };
+  }
 }
 
 function toggleOverlayPanel() {
