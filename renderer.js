@@ -459,8 +459,48 @@ function renderModule(mod) {
         </div>
       </div>
     </div>
+    
+    <!-- Interactive Challenges -->
+    <div class="section-card fade-in fade-in-delay-5" id="interactiveChallengesSection" style="display:none;">
+      <div class="section-header" style="background: rgba(0, 240, 255, 0.05); border-bottom: 1px solid var(--border-accent);">
+        <div class="section-icon concept" style="background: var(--cyan); color: #000;">🎯</div>
+        <h3 class="section-title" style="color: var(--cyan);">Interactive Challenges</h3>
+      </div>
+      <div class="section-body">
+        <p>Put your skills to the test inside the live lab environment. You can follow an interactive step-by-step tutorial, or try to solve it on your own!</p>
+        <div id="challengesList" class="challenges-list" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+          <!-- Populated dynamically if tutorials exist for this module -->
+        </div>
+      </div>
+    </div>
   `;
 
+  // After rendering, check if there are tutorials for this module
+  if (window.TUTORIALS) {
+    const modsTuts = Object.entries(window.TUTORIALS).filter(([key, tut]) => tut.module === mod.id);
+    if (modsTuts.length > 0) {
+      document.getElementById('interactiveChallengesSection').style.display = 'block';
+      const list = document.getElementById('challengesList');
+      list.innerHTML = modsTuts.map(([key, tut]) => `
+        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-elevated); padding:12px 16px; border:1px solid var(--border); border-radius:var(--radius-sm);">
+          <div>
+            <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">${escapeHtml(tut.name)}</div>
+            <div style="font-size:12px; color:var(--text-secondary);">${escapeHtml(tut.description)}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="window.__app.startChallenge('${key}')">
+              Real Challenge
+            </button>
+            <button class="btn btn-boot" onclick="window.__app.startTutorial('${key}')" style="background: linear-gradient(135deg, var(--cyan), var(--violet)); box-shadow: 0 0 15px rgba(0,240,255,0.2);">
+              Start Tutorial
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // Setup copy buttons
   attachCopyHandlers();
   contentArea.scrollTop = 0;
 }
@@ -799,6 +839,52 @@ function toggleOverlayPanel() {
   }
 }
 
+function startTutorial(tutorialKey) {
+  if (!isLabMode) toggleLabMode();
+  
+  if (!window.TUTORIALS || !window.TUTORIALS[tutorialKey]) {
+    alert("Tutorial not found!");
+    return;
+  }
+  
+  const tut = window.TUTORIALS[tutorialKey];
+  
+  // Wait a bit if webview is just loading
+  const play = () => {
+    // If the first step has a hash, let's navigate there
+    if (tut.steps[0] && tut.steps[0].hash) {
+      // Execute JS in webview to change hash
+      webviewEl.executeJavaScript(`window.location.hash = '${tut.steps[0].hash}';`);
+    }
+    webviewEl.send('play-tutorial', tut.steps);
+  };
+
+  if (webviewLoading.style.display === 'flex') {
+    webviewEl.addEventListener('did-finish-load', play, { once: true });
+  } else {
+    play();
+  }
+}
+
+function startChallenge(tutorialKey) {
+  if (!isLabMode) toggleLabMode();
+  
+  if (!window.TUTORIALS || !window.TUTORIALS[tutorialKey]) return;
+  const tut = window.TUTORIALS[tutorialKey];
+  
+  // Navigate if the first step has a hash, but don't play tutorial
+  if (tut.steps[0] && tut.steps[0].hash) {
+    const go = () => {
+      webviewEl.executeJavaScript(`window.location.hash = '${tut.steps[0].hash}';`);
+    };
+    if (webviewLoading.style.display === 'flex') {
+      webviewEl.addEventListener('did-finish-load', go, { once: true });
+    } else {
+      go();
+    }
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    UTILITIES
    ═══════════════════════════════════════════════════════════════════════════════ */
@@ -833,8 +919,16 @@ window.__app = {
   downloadDocker,
   recheckDocker,
   toggleLabMode,
-  toggleOverlayPanel
+  toggleOverlayPanel,
+  startTutorial,
+  startChallenge
 };
+
+window.TUTORIALS = {};
+fetch('tutorials.json')
+  .then(res => res.json())
+  .then(data => { window.TUTORIALS = data; })
+  .catch(err => console.error("Failed to load tutorials:", err));
 
 buildSidebar();
 checkDockerInstallation();

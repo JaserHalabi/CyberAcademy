@@ -1,0 +1,108 @@
+{
+  "sqli-login": {
+    "challengeKey": "loginAdminChallenge",
+    "name": "SQL Injection (Login Bypass)",
+    "module": "sqli",
+    "description": "Learn how to bypass authentication using a SQL Injection vulnerability.",
+    "steps": [
+      {
+        "text": "Welcome to the SQL Injection tutorial! First, we need to navigate to the Login page. Click the 'Account' button in the top navigation bar.",
+        "selector": "#navbarAccount",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Great! Now click 'Login' to go to the authentication page.",
+        "selector": "#navbarLoginButton",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "We're on the login page. In the Email field, we will inject a SQL payload. Type exactly: admin@juice-sh.op'--",
+        "selector": "#email",
+        "action": "input",
+        "waitForValue": "admin@juice-sh.op'--",
+        "position": "right"
+      },
+      {
+        "text": "The single quote (') closes the SQL string early, and the dashes (--) comment out the rest of the query (including the password check). Now click into the Password field.",
+        "selector": "#password",
+        "action": "focus",
+        "position": "right"
+      },
+      {
+        "text": "Since the password check is commented out by our payload, you can type any random password here. Type 'password'.",
+        "selector": "#password",
+        "action": "input",
+        "waitForValue": "password",
+        "position": "right"
+      },
+      {
+        "text": "Perfect! The database will ignore the password. Click the 'Log in' button to execute the attack.",
+        "selector": "#loginButton",
+        "action": "click",
+        "position": "right"
+      }
+    ]
+  },
+  "score-board": {
+    "challengeKey": "scoreBoardChallenge",
+    "name": "Find the Score Board",
+    "module": "burp-proxy",
+    "description": "The Score Board is hidden. We need to find the correct path.",
+    "steps": [
+      {
+        "text": "The Score Board link is not in the menu. But we can navigate to it directly if we know the path. Click the search button to open the search bar.",
+        "selector": "mat-search-bar button",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Instead of searching, we will just manually change the URL. Actually, for this tutorial, I'll reveal the path: it's /#/score-board. Click anywhere to continue.",
+        "selector": "body",
+        "action": "click",
+        "position": "center"
+      },
+      {
+        "text": "Let's use the search box to trigger it anyway. Type 'score-board'.",
+        "selector": "#searchQuery",
+        "action": "input",
+        "waitForValue": "score-board",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to search. Then we will manually navigate there.",
+        "selector": "#searchQuery",
+        "action": "enter",
+        "position": "bottom"
+      }
+    ]
+  },
+  "xss-search": {
+    "challengeKey": "xssTierOneChallenge",
+    "name": "Reflected XSS",
+    "module": "burp-proxy",
+    "description": "Execute a basic Cross-Site Scripting attack in the search field.",
+    "steps": [
+      {
+        "text": "We will test the search functionality for XSS. Click the search icon in the top bar.",
+        "selector": "mat-search-bar button",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Now type the classic XSS payload: <iframe src=\"javascript:alert(`xss`)\">",
+        "selector": "#searchQuery",
+        "action": "input",
+        "waitForValue": "<iframe src=\"javascript:alert(`xss`)\">",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to execute the search and trigger the payload!",
+        "selector": "#searchQuery",
+        "action": "enter",
+        "position": "bottom"
+      }
+    ]
+  }
+}
