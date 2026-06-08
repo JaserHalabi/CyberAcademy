@@ -418,11 +418,12 @@ window.__overlay = {
       });
     }
 
-    // Periodic bulk sync
+    // Periodic bulk sync to ensure XP tracks even if socket intercept fails
     setInterval(() => {
-      // We could use webviewEl.executeJavaScript to force a fetch if needed,
-      // but the preload monkey-patching handles normal usage.
-    }, 30000);
+      if (webviewEl && webviewEl.executeJavaScript) {
+        webviewEl.executeJavaScript("fetch('/api/Challenges').catch(e=>{})").catch(e => {});
+      }
+    }, 5000);
   },
 
   goToModule(moduleId) {

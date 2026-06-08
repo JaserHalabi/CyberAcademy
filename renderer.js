@@ -679,12 +679,33 @@ async function handleBoot() {
 }
 
 async function handleStop() {
+  const btnRestart = document.getElementById('btnRestart');
+  if (btnRestart) btnRestart.style.display = 'none';
+
   labMessage.textContent = 'Stopping lab containers...';
   try {
     const results = await window.labAPI.stopLab();
     handleLabResults(results, 'stopped');
   } catch (err) {
     showError('Unexpected error while stopping the lab: ' + err.message);
+  }
+}
+
+async function handleRestart() {
+  const btnRestart = document.getElementById('btnRestart');
+  if (btnRestart) {
+    btnRestart.querySelector('span').textContent = 'Restarting...';
+    btnRestart.classList.add('loading');
+    btnRestart.disabled = true;
+  }
+  
+  await handleStop();
+  await handleBoot();
+  
+  if (btnRestart) {
+    btnRestart.querySelector('span').textContent = 'Restart Lab';
+    btnRestart.classList.remove('loading');
+    btnRestart.disabled = false;
   }
 }
 
@@ -717,7 +738,9 @@ function handleLabResults(results, action) {
   } else {
     labMessage.textContent = `Lab containers ${action} successfully.`;
     clearError();
+    const btnRestart = document.getElementById('btnRestart');
     if (action === 'booted') {
+      if (btnRestart) btnRestart.style.display = 'inline-flex';
       window.labAPI.openUrl('http://localhost:3000');
       // Delay second URL slightly to prevent browser from ignoring simultaneous requests
       setTimeout(() => {
@@ -849,21 +872,7 @@ function startTutorial(tutorialKey) {
   
   const tut = window.TUTORIALS[tutorialKey];
   
-  // The entire tutorial engine is injected directly into the Juice Shop page
-  // via executeJavaScript. This runs in the page's main world, so it has
-  // full DOM access. We cannot rely on preload scripts because they run
-  // in an isolated context.
-  const tutorialEngineCode = `
-(function() {
-  // Prevent double-injection
-  if (window.__cyberTutorialEngine) {
-    window.__cyberTutorialEngine.play(${JSON.stringify(tut.steps)});
-    return;
-  }
-
-  // --- Inject CSS ---
-  var style = document.createElement('style');
-  style.textContent = \`
+  const tutorialCSS = `
     #cyber-tut-backdrop {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(0, 0, 0, 0.65); z-index: 999990;
@@ -915,10 +924,15 @@ function startTutorial(tutorialKey) {
       position: fixed; z-index: 999998;
       width: 0; height: 0; pointer-events: none;
     }
-  \`;
-  document.head.appendChild(style);
+  `;
+  
+  const tutorialEngineCode = `
+(function() {
+  if (window.__cyberTutorialEngine) {
+    window.__cyberTutorialEngine.play(${JSON.stringify(tut.steps)});
+    return;
+  }
 
-  // --- Create DOM elements ---
   var backdrop = document.createElement('div');
   backdrop.id = 'cyber-tut-backdrop';
   document.body.appendChild(backdrop);
@@ -928,7 +942,6 @@ function startTutorial(tutorialKey) {
   bubble.style.display = 'none';
   document.body.appendChild(bubble);
 
-  // --- Engine ---
   var engine = {
     steps: [],
     current: 0,
@@ -963,7 +976,6 @@ function startTutorial(tutorialKey) {
     showStep: function() {
       var self = this;
       if (this.current >= this.steps.length) {
-        // Tutorial complete!
         bubble.innerHTML = '<div class="tut-step-badge">Tutorial Complete!</div>' +
           '<div class="tut-text">Congratulations! You have completed the tutorial.</div>' +
           '<div class="tut-skip-btn"><button class="tut-btn tut-btn-primary" id="tut-done-btn">Done</button></div>';
@@ -978,7 +990,6 @@ function startTutorial(tutorialKey) {
       var step = this.steps[this.current];
       this.clearHighlight();
 
-      // Find target element
       var target = null;
       if (step.selector === 'body') {
         target = document.body;
@@ -991,7 +1002,6 @@ function startTutorial(tutorialKey) {
         if (this.retryCount < this.maxRetries) {
           setTimeout(function() { self.showStep(); }, 500);
         } else {
-          // Skip this step after too many retries
           this.retryCount = 0;
           this.current++;
           this.showStep();
@@ -1000,12 +1010,10 @@ function startTutorial(tutorialKey) {
       }
       this.retryCount = 0;
 
-      // Highlight the target
       if (target !== document.body) {
         target.classList.add('cyber-tut-highlight');
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-        // Cut hole in backdrop
         setTimeout(function() {
           var rect = target.getBoundingClientRect();
           var pad = 6;
@@ -1166,6 +1174,7 @@ function formatRisk(risk) {
 window.__app = {
   handleBoot,
   handleStop,
+  handleRestart,
   handleRefresh,
   downloadDocker,
   recheckDocker,
