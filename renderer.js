@@ -1172,10 +1172,14 @@ function startTutorial(tutorialKey) {
       webviewEl.executeJavaScript(`window.location.hash = '${tut.steps[0].hash}';`);
       // Give Juice Shop a moment to route, then inject
       setTimeout(() => {
-        webviewEl.executeJavaScript(tutorialEngineCode);
+        webviewEl.insertCSS(tutorialCSS)
+          .then(() => webviewEl.executeJavaScript(tutorialEngineCode))
+          .catch(err => alert("Tutorial injection error (delayed): " + err.message));
       }, 1500);
     } else {
-      webviewEl.executeJavaScript(tutorialEngineCode);
+      webviewEl.insertCSS(tutorialCSS)
+        .then(() => webviewEl.executeJavaScript(tutorialEngineCode))
+        .catch(err => alert("Tutorial injection error: " + err.message));
     }
   };
 
