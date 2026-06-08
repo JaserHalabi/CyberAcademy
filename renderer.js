@@ -760,6 +760,10 @@ function toggleLabMode() {
 }
 
 function initLabMode() {
+  // Determine absolute path to the preload script
+  const preloadPath = window.location.href.replace('index.html', 'webview-preload.js');
+  webviewEl.setAttribute('preload', preloadPath);
+
   // Load Juice Shop in the webview
   webviewEl.src = 'http://localhost:3000';
 
