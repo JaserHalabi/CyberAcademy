@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="overlay.css" />
 </head>
 <body>
 
@@ -32,10 +33,19 @@
       <div class="nav-section-label">Modules</div>
     </nav>
 
+    <!-- Lab Mode Toggle in Sidebar -->
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-lab-toggle" id="sidebarLabToggle">
+      <button id="btnLabMode" class="btn btn-lab-mode" onclick="window.__app.toggleLabMode()">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span id="btnLabModeText">Enter Lab Mode</span>
+      </button>
+    </div>
+
     <div class="sidebar-footer">
       <div class="sidebar-divider"></div>
       <div class="footer-info">
-        <span class="version-badge">v1.1.0</span>
+        <span class="version-badge">v2.0.0</span>
         <span class="footer-text">Offline Mode</span>
       </div>
     </div>
@@ -89,7 +99,7 @@
       <div id="dockerWizardMount"></div>
     </header>
 
-    <!-- ─── Dynamic Content Area ─── -->
+    <!-- ─── Study Mode: Dynamic Content Area ─── -->
     <section id="contentArea" class="content-area">
       <div class="welcome-hero" id="welcomeHero">
         <div class="hero-glow"></div>
@@ -120,8 +130,52 @@
         </div>
       </div>
     </section>
+
+    <!-- ─── Lab Mode: Webview + Overlay ─── -->
+    <section id="labMode" class="lab-mode" style="display:none;">
+
+      <!-- Webview Container -->
+      <div id="webviewContainer" class="webview-container">
+        <webview id="juiceshopView"
+          src="about:blank"
+          preload="./webview-preload.js"
+          allowpopups
+          disablewebsecurity>
+        </webview>
+
+        <!-- Loading Overlay -->
+        <div id="webviewLoading" class="webview-loading">
+          <div class="webview-loading-spinner"></div>
+          <p class="webview-loading-text">Loading Juice Shop...</p>
+        </div>
+      </div>
+
+      <!-- Overlay Panel (right side) -->
+      <aside id="overlayPanel" class="overlay-panel">
+        <div class="overlay-header">
+          <div class="overlay-header-left">
+            <span class="overlay-header-icon">🎯</span>
+            <h3 class="overlay-header-title">Mission Control</h3>
+          </div>
+          <button id="overlayToggle" class="overlay-toggle" onclick="window.__app.toggleOverlayPanel()" title="Toggle panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+        </div>
+        <div id="overlayContent" class="overlay-content">
+          <!-- Dynamically rendered by overlay.js -->
+        </div>
+      </aside>
+
+      <!-- Achievement Toast Container -->
+      <div id="achievementToasts" class="achievement-toasts"></div>
+
+      <!-- Contextual Hint Bubble -->
+      <div id="contextHint" class="context-hint" style="display:none;"></div>
+    </section>
   </main>
 
   <script src="renderer.js"></script>
+  <script src="overlay.js"></script>
 </body>
 </html>
+

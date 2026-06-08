@@ -719,6 +719,83 @@ function clearError() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   LAB MODE — Webview + Overlay
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+let isLabMode = false;
+let labModeInitialized = false;
+let overlayPanelCollapsed = false;
+
+const labModeEl       = document.getElementById('labMode');
+const contentAreaEl   = document.getElementById('contentArea');
+const labPanelEl      = document.getElementById('labPanel');
+const webviewEl       = document.getElementById('juiceshopView');
+const webviewLoading  = document.getElementById('webviewLoading');
+const btnLabModeText  = document.getElementById('btnLabModeText');
+const overlayPanel    = document.getElementById('overlayPanel');
+const overlayToggle   = document.getElementById('overlayToggle');
+
+function toggleLabMode() {
+  isLabMode = !isLabMode;
+
+  if (isLabMode) {
+    // Switch to Lab Mode
+    contentAreaEl.style.display = 'none';
+    labModeEl.style.display = 'flex';
+    btnLabModeText.textContent = 'Study Mode';
+    document.getElementById('btnLabMode').classList.add('active');
+
+    // Initialize webview on first entry
+    if (!labModeInitialized) {
+      initLabMode();
+      labModeInitialized = true;
+    }
+  } else {
+    // Switch back to Study Mode
+    labModeEl.style.display = 'none';
+    contentAreaEl.style.display = '';
+    btnLabModeText.textContent = 'Enter Lab Mode';
+    document.getElementById('btnLabMode').classList.remove('active');
+  }
+}
+
+function initLabMode() {
+  // Load Juice Shop in the webview
+  webviewEl.src = 'http://localhost:3000';
+
+  // Show loading overlay
+  webviewLoading.style.display = 'flex';
+
+  // Hide loading when the page finishes loading
+  webviewEl.addEventListener('did-finish-load', () => {
+    webviewLoading.style.display = 'none';
+  });
+
+  webviewEl.addEventListener('did-fail-load', (_event) => {
+    webviewLoading.querySelector('.webview-loading-text').textContent =
+      'Failed to load Juice Shop. Is the lab running?';
+    webviewLoading.querySelector('.webview-loading-spinner').style.display = 'none';
+  });
+
+  // Initialize the overlay system if overlay.js is loaded
+  if (window.__overlay) {
+    window.__overlay.init(webviewEl);
+  }
+}
+
+function toggleOverlayPanel() {
+  overlayPanelCollapsed = !overlayPanelCollapsed;
+
+  if (overlayPanelCollapsed) {
+    overlayPanel.classList.add('collapsed');
+    overlayToggle.querySelector('svg').innerHTML = '<polyline points="9 18 15 12 9 6"/>';
+  } else {
+    overlayPanel.classList.remove('collapsed');
+    overlayToggle.querySelector('svg').innerHTML = '<polyline points="15 18 9 12 15 6"/>';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    UTILITIES
    ═══════════════════════════════════════════════════════════════════════════════ */
 
@@ -750,8 +827,11 @@ window.__app = {
   handleStop,
   handleRefresh,
   downloadDocker,
-  recheckDocker
+  recheckDocker,
+  toggleLabMode,
+  toggleOverlayPanel
 };
 
 buildSidebar();
 checkDockerInstallation();
+

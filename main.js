@@ -146,11 +146,25 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   });
 
   win.loadFile('index.html');
+
+  // ── Monitor Juice Shop webview network at the session level (backup) ────
+  win.webContents.on('did-attach-webview', (_event, webContents) => {
+    webContents.session.webRequest.onCompleted(
+      { urls: ['http://localhost:3000/api/Challenges/*'] },
+      (details) => {
+        win.webContents.send('juiceshop:api-hit', {
+          url: details.url,
+          statusCode: details.statusCode
+        });
+      }
+    );
+  });
 }
 
 // ─── App Lifecycle ──────────────────────────────────────────────────────────────

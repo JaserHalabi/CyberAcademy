@@ -23,5 +23,11 @@ contextBridge.exposeInMainWorld('labAPI', {
   openUrl:       (url) => ipcRenderer.invoke('lab:openUrl', url),
 
   /** Open the Docker Desktop download page for the current platform. */
-  downloadDocker:() => ipcRenderer.invoke('lab:downloadDocker')
+  downloadDocker:() => ipcRenderer.invoke('lab:downloadDocker'),
+
+  // ── Overlay System ──────────────────────────────────────────────────────────
+  /** Listen for Juice Shop API hits detected at the network level (main process). */
+  onJuiceshopApiHit: (callback) => {
+    ipcRenderer.on('juiceshop:api-hit', (_event, data) => callback(data));
+  }
 });
