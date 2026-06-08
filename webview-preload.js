@@ -253,11 +253,11 @@ class TutorialEngine {
       .cyber-tut-btn:hover { background: rgba(0,240,255,0.25); }
       .cyber-highlighted { position: relative; z-index: 999999 !important; }
     `;
-    document.head.appendChild(style);
     
-    // Wait for body to be ready
+    // Wait for DOM to be ready
     const tryInject = () => {
-      if (document.body) {
+      if (document.head && document.body) {
+        document.head.appendChild(style);
         document.body.appendChild(this.backdrop);
         document.body.appendChild(this.bubble);
       } else {
