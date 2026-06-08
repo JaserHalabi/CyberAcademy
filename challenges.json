@@ -161,7 +161,7 @@
       "xp": 200
     },
     "xssTierOneChallenge": {
-      "module": null,
+      "module": "xss",
       "difficulty": 1,
       "category": "XSS",
       "hint": "Try inserting a <script>alert('XSS')</script> tag into the search field or a user input that gets reflected on the page.",
@@ -169,7 +169,7 @@
       "xp": 150
     },
     "xssTierTwoChallenge": {
-      "module": null,
+      "module": "xss",
       "difficulty": 3,
       "category": "XSS",
       "hint": "Look for stored XSS vectors — try injecting script tags into product reviews or feedback that persists across page loads.",
@@ -209,7 +209,7 @@
       "xp": 100
     },
     "httpHeaderXssChallenge": {
-      "module": null,
+      "module": "xss",
       "difficulty": 3,
       "category": "XSS",
       "hint": "Some XSS payloads can be delivered via HTTP headers. Use Burp to inject script tags into headers that get reflected in error pages.",
@@ -241,7 +241,7 @@
       "xp": 200
     },
     "domXssChallenge": {
-      "module": null,
+      "module": "xss",
       "difficulty": 1,
       "category": "XSS",
       "hint": "Try injecting an iframe or img tag with an onerror handler into the search field: <iframe src=\"javascript:alert('xss')\">&lt;/iframe>",
@@ -343,7 +343,7 @@
       "description": "Failures in enforcing permissions, allowing unauthorized access to resources."
     },
     "XSS": {
-      "module": null,
+      "module": "xss",
       "color": "#8b5cf6",
       "icon": "⚡",
       "description": "Cross-Site Scripting — injecting malicious client-side scripts into web pages."

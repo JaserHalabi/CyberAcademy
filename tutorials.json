@@ -1,7 +1,7 @@
 {
   "sqli-login": {
     "challengeKey": "loginAdminChallenge",
-    "name": "SQL Injection (Login Bypass)",
+    "name": "SQL Injection (Admin Login)",
     "module": "sqli",
     "description": "Learn how to bypass authentication using a SQL Injection vulnerability.",
     "steps": [
@@ -45,6 +45,79 @@
       }
     ]
   },
+  "sqli-bender": {
+    "challengeKey": "loginBenderChallenge",
+    "name": "SQL Injection (Bender Login)",
+    "module": "sqli",
+    "description": "Use the same SQLi technique to compromise another user account.",
+    "steps": [
+      {
+        "text": "Let's compromise Bender's account using the same SQL Injection technique. Click the 'Account' button.",
+        "selector": "#navbarAccount",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Click 'Login' to go to the authentication page.",
+        "selector": "#navbarLoginButton",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "In the Email field, target Bender's account. Type exactly: bender@juice-sh.op'--",
+        "selector": "#email",
+        "action": "input",
+        "waitForValue": "bender@juice-sh.op'--",
+        "position": "right"
+      },
+      {
+        "text": "Now click into the Password field.",
+        "selector": "#password",
+        "action": "focus",
+        "position": "right"
+      },
+      {
+        "text": "Type any password — it will be ignored by the database.",
+        "selector": "#password",
+        "action": "input",
+        "waitForValue": "password",
+        "position": "right"
+      },
+      {
+        "text": "Click 'Log in' to access Bender's account!",
+        "selector": "#loginButton",
+        "action": "click",
+        "position": "right"
+      }
+    ]
+  },
+  "sqli-error": {
+    "challengeKey": "errorHandlingChallenge",
+    "name": "Error-Based SQL Injection",
+    "module": "sqli",
+    "description": "Provoke a database error to confirm SQL injection vulnerability exists.",
+    "steps": [
+      {
+        "text": "We can confirm SQL injection exists by intentionally breaking a query. Click the search icon in the top bar.",
+        "selector": "mat-search-bar button",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "A single quote (') usually breaks SQL syntax if the input is not properly escaped. Type a single quote character: '",
+        "selector": "#searchQuery",
+        "action": "input",
+        "waitForValue": "'",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to search. The server will throw a SQLITE_ERROR in the response, proving the input reaches the database unsanitized!",
+        "selector": "#searchQuery",
+        "action": "enter",
+        "position": "bottom"
+      }
+    ]
+  },
   "score-board": {
     "challengeKey": "scoreBoardChallenge",
     "name": "Find the Score Board",
@@ -80,9 +153,9 @@
   },
   "xss-search": {
     "challengeKey": "xssTierOneChallenge",
-    "name": "Reflected XSS",
-    "module": "burp-proxy",
-    "description": "Execute a basic Cross-Site Scripting attack in the search field.",
+    "name": "Reflected XSS (Search)",
+    "module": "xss",
+    "description": "Execute a basic Cross-Site Scripting attack via the search field.",
     "steps": [
       {
         "text": "We will test the search functionality for XSS. Click the search icon in the top bar.",
@@ -91,14 +164,41 @@
         "position": "bottom"
       },
       {
-        "text": "Now type the classic XSS payload: <iframe src=\"javascript:alert(`xss`)\">",
+        "text": "Now type the XSS payload:  <iframe src=\"javascript:alert('xss')\">",
         "selector": "#searchQuery",
         "action": "input",
-        "waitForValue": "<iframe src=\"javascript:alert(`xss`)\">",
+        "waitForValue": "<iframe src=\"javascript:alert('xss')\">",
         "position": "bottom"
       },
       {
         "text": "Press Enter to execute the search and trigger the payload!",
+        "selector": "#searchQuery",
+        "action": "enter",
+        "position": "bottom"
+      }
+    ]
+  },
+  "xss-dom": {
+    "challengeKey": "domXssChallenge",
+    "name": "DOM-Based XSS",
+    "module": "xss",
+    "description": "Trigger XSS via client-side DOM manipulation without server involvement.",
+    "steps": [
+      {
+        "text": "DOM XSS happens entirely in the browser. Click the search icon.",
+        "selector": "mat-search-bar button",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "We will use an iframe payload. The client-side router reflects this into the DOM directly. Type:  <iframe src=\"javascript:alert('xss')\">",
+        "selector": "#searchQuery",
+        "action": "input",
+        "waitForValue": "<iframe src=\"javascript:alert('xss')\">",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter. Since the search query is included in the URL hash, Angular processes it locally and triggers the XSS!",
         "selector": "#searchQuery",
         "action": "enter",
         "position": "bottom"
