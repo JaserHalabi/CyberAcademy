@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
-const fs = require('fs');
 
 // ─── Container Configuration ───────────────────────────────────────────────────
 const CONTAINERS = {
@@ -59,15 +58,6 @@ function runCommand(cmd) {
 // ─── IPC Handlers ───────────────────────────────────────────────────────────────
 
 function registerIpcHandlers() {
-
-  ipcMain.handle('lab:getTutorials', () => {
-    try {
-      return require('./tutorials.json');
-    } catch (e) {
-      console.error('Failed to read tutorials.json', e);
-      return {};
-    }
-  });
 
   // ── Check Docker Installation ───────────────────────────────────────────────
   ipcMain.handle('lab:checkDocker', async () => {
@@ -139,53 +129,129 @@ function registerIpcHandlers() {
     }
     return results;
   });
-}
 
-// ─── Mini Burp Proxy — Session-Level Interception ───────────────────────────────
-let isProxyInterceptOn = true;
-let proxyQueue = [];
+  // ── Proxy Simulator ──────────────────────────────────────────────────────────
+  ipcMain.on('proxy:forward', (event, modifiedRawRequest) => {
+    if (pendingProxyContext) {
+      const { res } = pendingProxyContext;
+      
+      const parts = (modifiedRawRequest || '').split('\r\n\r\n');
+      const headerSection = parts[0] || '';
+      const finalBody = parts.slice(1).join('\r\n\r\n') || '';
 
-function sendNextProxyRequest() {
-  const mainWindow = BrowserWindow.getAllWindows()[0];
-  if (mainWindow && proxyQueue.length > 0) {
-    const nextReq = proxyQueue[0];
-    mainWindow.webContents.send('proxy:intercepted', {
-      method: nextReq.details.method,
-      url: nextReq.details.url,
-      body: nextReq.rawRequest
-    });
-  }
-}
+      const headerLines = headerSection.split('\r\n');
+      const requestLine = (headerLines.shift() || '').split(' ');
+      const method = requestLine[0] || 'GET';
+      const path = requestLine[1] || '/';
 
-function setupProxyIpc() {
-  ipcMain.on('proxy:forward', (_event, _modifiedRawRequest) => {
-    if (proxyQueue.length > 0) {
-      const req = proxyQueue.shift();
-      req.callback({ cancel: false });
-      sendNextProxyRequest();
+      const headers = {};
+      headerLines.forEach(line => {
+        const idx = line.indexOf(':');
+        if (idx > 0) {
+          const key = line.substring(0, idx).trim().toLowerCase();
+          const val = line.substring(idx + 1).trim();
+          headers[key] = val;
+        }
+      });
+      
+      const options = {
+        hostname: 'localhost',
+        port: 3000,
+        path: path,
+        method: method,
+        headers: headers
+      };
+      
+      options.headers['content-length'] = Buffer.byteLength(finalBody);
+      
+      const proxyReq = http.request(options, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+      });
+      
+      proxyReq.on('error', (e) => {
+        if (!res.headersSent) {
+          res.writeHead(500);
+          res.end('Proxy Error');
+        }
+      });
+      
+      proxyReq.write(finalBody);
+      proxyReq.end();
+      
+      pendingProxyContext = null;
+    }
+  });
+  
+  ipcMain.on('proxy:drop', (event) => {
+    if (pendingProxyContext) {
+      pendingProxyContext.res.destroy();
+      pendingProxyContext = null;
     }
   });
 
-  ipcMain.on('proxy:drop', (_event) => {
-    if (proxyQueue.length > 0) {
-      const req = proxyQueue.shift();
-      req.callback({ cancel: true });
-      sendNextProxyRequest();
-    }
-  });
-
-  ipcMain.handle('proxy:toggle', (_event, isOn) => {
+  ipcMain.handle('proxy:toggle', (event, isOn) => {
     isProxyInterceptOn = isOn;
-    // If turning off intercept, release ALL pending requests
-    if (!isOn) {
-      while (proxyQueue.length > 0) {
-        const req = proxyQueue.shift();
-        req.callback({ cancel: false });
-      }
-    }
     return isProxyInterceptOn;
   });
 }
+
+// ─── Mini Burp Proxy Server ─────────────────────────────────────────────────────
+const http = require('http');
+let isProxyInterceptOn = true;
+let pendingProxyContext = null;
+
+const proxyServer = http.createServer((req, res) => {
+  // We only intercept POST/PUT requests to the API for the simulation
+  if (isProxyInterceptOn && ['POST', 'PUT'].includes(req.method) && req.url.includes('/api/')) {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      // Pause the request, send payload to UI
+      pendingProxyContext = { req, res, body };
+      
+      // Build raw HTTP request string
+      let rawRequest = `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`;
+      for (let i = 0; i < req.rawHeaders.length; i += 2) {
+        rawRequest += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
+      }
+      rawRequest += `\r\n${body}`;
+      
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('proxy:intercepted', {
+          method: req.method,
+          url: req.url,
+          body: rawRequest
+        });
+      }
+    });
+  } else {
+    // Pass through
+    const options = {
+      hostname: 'localhost',
+      port: 3000,
+      path: req.url,
+      method: req.method,
+      headers: req.headers
+    };
+    
+    const proxyReq = http.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    });
+    
+    req.pipe(proxyReq);
+    proxyReq.on('error', (e) => {
+      res.writeHead(500);
+      res.end('Proxy Error');
+    });
+  }
+});
+
+proxyServer.listen(8081, '127.0.0.1', () => {
+  console.log('Mini Burp proxy running on 127.0.0.1:8081');
+});
 
 // ─── Window Creation ────────────────────────────────────────────────────────────
 
@@ -209,67 +275,12 @@ function createWindow() {
 
   win.loadFile('index.html');
 
-  // ── Intercept webview traffic using session.webRequest ────────────────────
+  // ── Monitor Juice Shop webview network at the session level (backup) ────
   win.webContents.on('did-attach-webview', (_event, webContents) => {
-    const session = webContents.session;
+    // Route all traffic through our Mini Burp local proxy server
+    webContents.session.setProxy({ proxyRules: 'http://127.0.0.1:8081' });
 
-    // Use onBeforeRequest to intercept ALL requests from the webview
-    session.webRequest.onBeforeRequest(
-      { urls: ['http://localhost:3000/*', 'http://localhost:8080/*'] },
-      (details, callback) => {
-        // Only intercept when toggle is ON
-        if (!isProxyInterceptOn) {
-          callback({ cancel: false });
-          return;
-        }
-
-        // Skip static assets — only intercept API/REST/login calls
-        const url = details.url;
-        const isApiCall = url.includes('/api/') || url.includes('/rest/') || url.includes('/login');
-
-        if (!isApiCall) {
-          callback({ cancel: false });
-          return;
-        }
-
-        // Build a raw HTTP request string for display
-        const parsedUrl = new URL(details.url);
-        let rawRequest = `${details.method} ${parsedUrl.pathname}${parsedUrl.search} HTTP/1.1\r\n`;
-        rawRequest += `Host: ${parsedUrl.host}\r\n`;
-
-        // Add common headers
-        if (details.referrer) {
-          rawRequest += `Referer: ${details.referrer}\r\n`;
-        }
-        rawRequest += `Origin: ${parsedUrl.origin}\r\n`;
-
-        // Add upload data if present
-        let bodyStr = '';
-        if (details.uploadData && details.uploadData.length > 0) {
-          for (const chunk of details.uploadData) {
-            if (chunk.bytes) {
-              bodyStr += Buffer.from(chunk.bytes).toString('utf-8');
-            }
-          }
-          rawRequest += `Content-Type: application/json\r\n`;
-          rawRequest += `Content-Length: ${Buffer.byteLength(bodyStr)}\r\n`;
-        }
-
-        rawRequest += `\r\n${bodyStr}`;
-
-        // Add to the queue
-        const isQueueEmpty = proxyQueue.length === 0;
-        proxyQueue.push({ details, callback, rawRequest });
-
-        // If it was the first item in the queue, notify the UI immediately
-        if (isQueueEmpty) {
-          sendNextProxyRequest();
-        }
-      }
-    );
-
-    // Also monitor completed requests for the overlay system
-    session.webRequest.onCompleted(
+    webContents.session.webRequest.onCompleted(
       { urls: ['http://localhost:3000/api/Challenges/*'] },
       (details) => {
         win.webContents.send('juiceshop:api-hit', {
@@ -285,7 +296,6 @@ function createWindow() {
 
 app.whenReady().then(() => {
   registerIpcHandlers();
-  setupProxyIpc();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -7,9 +7,6 @@ const { contextBridge, ipcRenderer } = require('electron');
  * No raw Node.js modules (fs, child_process, etc.) are leaked.
  */
 contextBridge.exposeInMainWorld('labAPI', {
-  /** Fetch tutorials from main process to bypass cache */
-  getTutorials:  () => ipcRenderer.invoke('lab:getTutorials'),
-
   /** Boot Juice Shop + DVWA containers. */
   bootLab:       () => ipcRenderer.invoke('lab:boot'),
 

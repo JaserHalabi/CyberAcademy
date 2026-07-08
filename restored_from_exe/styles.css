@@ -540,24 +540,3 @@ body.theme-light {
 .danger-zone p { color:var(--text-secondary); font-size:12px; margin-bottom:16px; line-height:1.5; }
 .btn-danger-outline { width:100%; padding:10px; background:transparent; color:var(--danger); border:1px solid var(--danger); border-radius:var(--radius-sm); cursor:pointer; font-weight:600; transition:all 0.2s; }
 .btn-danger-outline:hover { background:var(--danger); color:white; }
-
-/* --- RTL / Arabic Support --- */
-[dir='rtl'] .sidebar { border-right: none; border-left: 1px solid var(--border); }
-[dir='rtl'] .sidebar-brand { flex-direction: row-reverse; }
-[dir='rtl'] .nav-item { flex-direction: row-reverse; }
-[dir='rtl'] .footer-info { flex-direction: row-reverse; }
-[dir='rtl'] .section-header { flex-direction: row-reverse; }
-[dir='rtl'] .step-item { flex-direction: row-reverse; }
-[dir='rtl'] .step-content { text-align: right; }
-[dir='rtl'] .section-body { text-align: right; }
-[dir='rtl'] .hero-title, [dir='rtl'] .hero-desc { text-align: center; }
-[dir='rtl'] .module-header { text-align: right; }
-[dir='rtl'] .modal-content { text-align: right; }
-[dir='rtl'] .modal-header { flex-direction: row-reverse; }
-[dir='rtl'] .setting-group { text-align: right; }
-[dir='rtl'] .danger-zone { text-align: right; }
-[dir='rtl'] .lab-panel-inner { flex-direction: row-reverse; }
-[dir='rtl'] .lab-panel-actions { flex-direction: row-reverse; }
-[dir='rtl'] .brand-text h1, [dir='rtl'] .brand-sub { text-align: right; }
-[dir='rtl'] .soc-layout { flex-direction: row-reverse; }
-[dir='rtl'] .terminal-header { flex-direction: row-reverse; }

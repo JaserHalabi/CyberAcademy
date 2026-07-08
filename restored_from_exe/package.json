@@ -1,12 +1,8 @@
 {
   "name": "cybercompanion",
-  "version": "1.0.5",
+  "version": "1.0.4",
   "description": "CyberCompanion — An interactive, offline educational guide for Web Application Penetration Testing",
   "main": "main.js",
   "author": "CyberAcademy",
-  "license": "MIT",
-  "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder --win --x64"
-  }
+  "license": "MIT"
 }
