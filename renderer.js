@@ -378,6 +378,52 @@ const MODULES = [
     ['GET /image?file=../../../etc/passwd', 'Path Traversal', 'The ../ pattern attempts to escape the web root and read arbitrary system files.'],
     ['GET /search?q=&lt;script&gt;', 'XSS', 'Raw HTML/Script tags in URL parameters indicate Reflected XSS attempts.']
   ]}
+},
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULE 8: Network Traffic Analysis
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  id: 'net-analyst', num: '08',
+  title: 'Network Traffic Analysis',
+  subtitle: 'Capture, decode, and analyze raw network packets to hunt for malware beacons, credential theft, and data exfiltration.',
+  tag: 'Module 8 — Blue Team Forensics',
+
+  concept: [
+    `Every byte that travels across a network can be captured and inspected. <strong>Packet analysis</strong> is the art of reading these raw captures to reconstruct what happened during a security incident — or to catch an attack <em>in progress</em>.`,
+    `<strong>Wireshark</strong> is the world's most popular network protocol analyzer. It decodes over 3,000 protocols from raw binary and presents them in a human-readable format. Security analysts use it to find plaintext credentials, malware C2 (command-and-control) beacons, DNS exfiltration, and unusual traffic patterns.`,
+    `A key skill is <strong>filtering</strong>. A typical packet capture contains thousands of packets per second. Using display filters (like <code>http.request.method == "POST"</code> or <code>dns contains "evil.com"</code>), you can isolate exactly the traffic you care about.`,
+    `On the command line, <strong>tcpdump</strong> is the lightweight alternative — perfect for capturing on headless servers or embedded devices where a GUI is unavailable.`
+  ],
+
+  analogy: { emoji: '🔬', text: `Think of packet analysis like reading every individual letter passing through a postal sorting facility. While most letters are birthday cards and bills (normal traffic), the analyst is looking for the one envelope containing a coded message to an overseas spy (a malware beacon). The key is filtering thousands of normal items to spot the one suspicious one.` },
+
+  steps: [
+    { title: 'Capture Traffic with Wireshark', desc: 'Open Wireshark and select your active network interface. Click the blue shark-fin to start a capture. You will immediately see a flood of packets. Stop the capture after 30 seconds.', code: { lang: 'filter', text: '# Wireshark Display Filter: Show only HTTP traffic\nhttp\n\n# Show only DNS queries\ndns\n\n# Filter by IP address\nip.addr == 192.168.1.105' } },
+    { title: 'Hunt for Plaintext Credentials', desc: 'Many legacy protocols (FTP, Telnet, HTTP Basic Auth) transmit credentials in plain text. Use the filter below and then follow the TCP stream (Right-click → Follow → TCP Stream) to reconstruct the full session.', code: { lang: 'filter', text: '# Find FTP login attempts\nftp.request.command == "PASS"\n\n# Find HTTP Basic Auth\nhttp.authorization\n\n# Find POST form data (look for password= parameters)\nhttp.request.method == "POST"' } },
+    { title: 'Detect DNS Exfiltration', desc: 'Attackers encode stolen data in DNS queries to bypass firewalls (since most networks allow DNS out). Look for abnormally long subdomain names, which indicate data is being tunneled.', code: { lang: 'filter', text: '# Show all DNS queries\ndns.flags.response == 0\n\n# Look for unusually long names (>50 chars = suspicious)\ndns.qry.name.len > 50\n\n# Suspicious example:\n# 6d616c77617265.exfil.evil.com  ← hex-encoded data in subdomain' } },
+    { title: 'Identify Malware C2 Beacons', desc: 'Malware "phones home" to its command server at regular intervals (beaconing). Look for a host making connections to an external IP on unusual ports at perfectly regular intervals (e.g., exactly every 60 seconds).', code: { lang: 'filter', text: '# Filter traffic to a suspicious external IP\nip.dst == 13.37.13.37\n\n# Look for repeated connections to same port\ntcp.dstport == 4444 or tcp.dstport == 1337\n\n# Check for small, regular payloads (beacon pattern)\ntcp.len > 0 and tcp.len < 100' } },
+    { title: 'Reconstruct an Attack with Follow Stream', desc: 'When you find a suspicious packet, right-click it and select <strong>Follow → TCP Stream</strong>. Wireshark will reconstruct the entire two-way conversation in a readable format, showing you the exact request and response — critical for understanding what data was stolen.', code: null },
+    { title: 'Capture on the Command Line (tcpdump)', desc: 'When you cannot run Wireshark, use tcpdump. Always save to a .pcap file for later analysis in Wireshark.', code: { lang: 'bash', text: '# Capture all traffic on eth0, save to file\ntcpdump -i eth0 -w capture.pcap\n\n# Capture only HTTP traffic (port 80)\ntcpdump -i eth0 port 80 -w http_traffic.pcap\n\n# Read and display a saved capture\ntcpdump -r capture.pcap -n\n\n# Filter by host IP\ntcpdump -i eth0 host 192.168.1.105 -w suspect.pcap' } }
+  ],
+
+  defense: [
+    { title: 'Encrypt All Traffic (TLS/HTTPS)', desc: 'TLS encryption makes packet capture useless — the attacker sees only encrypted ciphertext. Enforce TLS 1.3 with strong cipher suites. Never allow HTTP, FTP, or Telnet in production.' },
+    { title: 'Network Segmentation', desc: 'Use VLANs and firewall rules to segment your network. If an attacker compromises one host, they cannot simply sniff traffic on other segments they are not part of.' },
+    { title: 'Intrusion Detection Systems (IDS)', desc: 'Deploy an IDS like Snort or Suricata on your network tap/span port. These tools analyze live packet streams against known attack signatures and alert your SOC in real-time.' },
+    { title: 'DNS Security (DNSSEC & DoH)', desc: 'Implement DNS over HTTPS (DoH) or DNS over TLS (DoT) to prevent DNS sniffing and manipulation. Monitor DNS logs for anomalously long query names that indicate data exfiltration.' }
+  ],
+
+  payloads: { headers: ['Filter / Command', 'Purpose', 'Risk Detected'], rows: [
+    ['http.request.method == "POST"',   'Find all form submissions',          'Credential Theft'],
+    ['ftp.request.command == "PASS"',   'Find FTP plaintext passwords',      'Credential Exposure'],
+    ['dns.qry.name.len > 50',           'Detect DNS tunneling/exfiltration',  'Data Exfiltration'],
+    ['tcp.dstport == 4444',             'C2 beacon on common RAT port',       'Malware'],
+    ['http.authorization',              'Find Basic Auth credentials',         'Credential Theft'],
+    ['icmp',                            'Ping sweeps / ICMP tunneling',       'Reconnaissance'],
+    ['tcp.flags.syn == 1',              'SYN flood detection',                'DDoS'],
+    ['ip.src == 10.0.0.X && dns',       'Internal host doing unusual DNS',    'Lateral Movement']
+  ]}
 }
 
 ]; // end MODULES
@@ -708,6 +754,47 @@ const ARABIC_MODULES = [
     ['GET /image?file=../../../etc/passwd', 'اجتياز المسار', 'يحاول نمط ../ الهروب من جذر الويب وقراءة ملفات النظام التعسفية.'],
     ['GET /search?q=<script>', 'XSS', 'وسوم HTML/Script الخام في معاملات URL تشير إلى محاولات XSS المنعكس.']
   ]}
+},
+
+// ─── الوحدة 8: تحليل حركة مرور الشبكة ───────────────────────────────────────
+{
+  id: 'net-analyst', num: '08',
+  title: 'تحليل حركة مرور الشبكة',
+  subtitle: 'التقاط وفك تشفير وتحليل حزم الشبكة الخام لاكتشاف إشارات البرمجيات الخبيثة وسرقة بيانات الاعتماد وتسرب البيانات.',
+  tag: 'الوحدة 8 — الطب الشرعي للفريق الأزرق',
+
+  concept: [
+    `يمكن التقاط وفحص كل بايت يعبر الشبكة. <strong>تحليل الحزم</strong> هو فن قراءة هذه التقاطات الخام لإعادة بناء ما حدث خلال حادثة أمنية — أو لاصطياد هجوم <em>أثناء حدوثه</em>.`,
+    `<strong>Wireshark</strong> هو محلل بروتوكولات الشبكة الأكثر شعبية في العالم. يفك تشفير أكثر من 3000 بروتوكول من الثنائي الخام ويعرضها بتنسيق مقروء. يستخدمه محللو الأمن للعثور على بيانات اعتماد نصية، وإشارات الـ C2 الخاصة بالبرمجيات الخبيثة، وتسرب DNS، وأنماط حركة المرور غير المعتادة.`,
+    `المهارة الأساسية هي <strong>التصفية</strong>. التقاط الحزم النموذجي يحتوي على آلاف الحزم في الثانية. باستخدام مرشحات العرض يمكنك عزل حركة المرور التي تهمك تحديداً.`,
+    `في سطر الأوامر، <strong>tcpdump</strong> هو البديل الخفيف — مثالي للالتقاط على الخوادم التي لا تحتوي على واجهة رسومية.`
+  ],
+
+  analogy: { emoji: '🔬', text: `فكّر في تحليل الحزم مثل قراءة كل رسالة تمر عبر مرفق الفرز البريدي. بينما معظم الرسائل عبارة عن بطاقات أعياد ميلاد وفواتير (حركة مرور طبيعية)، يبحث المحلل عن المظروف الوحيد الذي يحتوي على رسالة مشفرة إلى جاسوس (إشارة برمجية خبيثة). المفتاح هو تصفية آلاف العناصر الطبيعية لاكتشاف العنصر المشبوه.` },
+
+  steps: [
+    { title: 'التقاط حركة المرور باستخدام Wireshark', desc: 'افتح Wireshark وحدد واجهة الشبكة النشطة. انقر على أيقونة زعنفة القرش الزرقاء لبدء الالتقاط. ستشاهد فوراً تدفقاً من الحزم. أوقف الالتقاط بعد 30 ثانية.', code: { lang: 'filter', text: '# مرشح عرض Wireshark: إظهار حركة HTTP فقط\nhttp\n\n# إظهار استعلامات DNS فقط\ndns\n\n# التصفية حسب عنوان IP\nip.addr == 192.168.1.105' } },
+    { title: 'البحث عن بيانات الاعتماد النصية', desc: 'كثير من البروتوكولات القديمة (FTP, Telnet, HTTP Basic Auth) ترسل بيانات الاعتماد كنص عادي. استخدم المرشح أدناه ثم اتبع تدفق TCP لإعادة بناء الجلسة الكاملة.', code: { lang: 'filter', text: '# إيجاد محاولات تسجيل الدخول عبر FTP\nftp.request.command == "PASS"\n\n# إيجاد HTTP Basic Auth\nhttp.authorization\n\n# إيجاد بيانات نماذج POST\nhttp.request.method == "POST"' } },
+    { title: 'اكتشاف تسرب البيانات عبر DNS', desc: 'يقوم المهاجمون بتشفير البيانات المسروقة في استعلامات DNS لتجاوز جدران الحماية. ابحث عن أسماء نطاقات فرعية طويلة بشكل غير طبيعي.', code: { lang: 'filter', text: '# إظهار جميع استعلامات DNS\ndns.flags.response == 0\n\n# البحث عن أسماء طويلة بشكل مشبوه (>50 حرف)\ndns.qry.name.len > 50' } },
+    { title: 'تحديد إشارات البرمجيات الخبيثة C2', desc: 'تتواصل البرمجيات الخبيثة مع خادمها بفترات منتظمة. ابحث عن مضيف يقوم باتصالات بعنوان IP خارجي على منافذ غير عادية بفترات منتظمة تماماً.', code: { lang: 'filter', text: '# التصفية حسب IP مشبوه\nip.dst == 13.37.13.37\n\n# البحث عن منافذ RAT الشائعة\ntcp.dstport == 4444 or tcp.dstport == 1337' } },
+    { title: 'الالتقاط عبر سطر الأوامر (tcpdump)', desc: 'عندما لا تتمكن من تشغيل Wireshark، استخدم tcpdump. احفظ دائماً في ملف .pcap للتحليل لاحقاً.', code: { lang: 'bash', text: '# التقاط كل حركة المرور على eth0\ntcpdump -i eth0 -w capture.pcap\n\n# التقاط حركة HTTP فقط\ntcpdump -i eth0 port 80 -w http.pcap\n\n# قراءة ملف التقاط محفوظ\ntcpdump -r capture.pcap -n' } }
+  ],
+
+  defense: [
+    { title: 'تشفير كل حركة المرور (TLS/HTTPS)', desc: 'يجعل تشفير TLS التقاط الحزم عديم الفائدة — لا يرى المهاجم سوى نص مشفر. طبّق TLS 1.3 مع مجموعات التشفير القوية.' },
+    { title: 'تجزئة الشبكة', desc: 'استخدم VLANs وقواعد جدار الحماية لتجزئة شبكتك. إذا اخترق المهاجم مضيفاً واحداً، لا يمكنه استنشاق حركة المرور في أجزاء أخرى.' },
+    { title: 'أنظمة كشف التسلل (IDS)', desc: 'انشر نظام IDS مثل Snort أو Suricata على نقطة الشبكة. تحلل هذه الأدوات تدفقات الحزم الحية مقابل توقيعات الهجوم المعروفة وتنبّه SOC الخاص بك في الوقت الفعلي.' },
+    { title: 'أمان DNS (DNSSEC و DoH)', desc: 'طبّق DNS over HTTPS أو DNS over TLS لمنع استنشاق DNS والتلاعب به. راقب سجلات DNS للأسماء الطويلة بشكل غير طبيعي التي تشير إلى تسرب البيانات.' }
+  ],
+
+  payloads: { headers: ['المرشح / الأمر', 'الغرض', 'الخطر المكتشف'], rows: [
+    ['http.request.method == "POST"',   'إيجاد جميع إرسالات النماذج',     'سرقة بيانات الاعتماد'],
+    ['ftp.request.command == "PASS"',   'كلمات مرور FTP النصية',           'كشف بيانات الاعتماد'],
+    ['dns.qry.name.len > 50',           'كشف نفق DNS / تسرب البيانات',    'تسرب البيانات'],
+    ['tcp.dstport == 4444',             'إشارة C2 على منفذ RAT الشائع',   'برمجية خبيثة'],
+    ['http.authorization',              'إيجاد بيانات اعتماد Basic Auth', 'سرقة بيانات الاعتماد'],
+    ['tcp.flags.syn == 1',              'كشف فيضان SYN',                  'DDoS']
+  ]}
 }
 
 ]; // end ARABIC_MODULES
@@ -1013,6 +1100,394 @@ Ready. Type 'hydra' for usage help.</div>
         });
       }
     }, 100);
+  }
+
+  // ── SQLmap Simulator ─────────────────────────────────────────────────────────
+  if (mod.id === 'sqlmap') {
+    const terminalHtml = `
+      <div class="section-card fade-in fade-in-delay-6" id="sqlmapTerminalSection">
+        <div class="section-header" style="background: rgba(251, 146, 60, 0.06); border-bottom: 1px solid rgba(251, 146, 60, 0.3);">
+          <div class="section-icon concept" style="background: #fb923c; color: #fff;">💻</div>
+          <h3 class="section-title" style="color: #fb923c;">Interactive SQLmap Terminal</h3>
+        </div>
+        <div class="section-body">
+          <p>Practice SQLmap commands in this simulated environment. Try <code>sqlmap -u "http://target.com/vuln?id=1" --dbs</code> or type <code>sqlmap --help</code> for a full reference.</p>
+          <div id="sqlmapSimTerminal" class="terminal-window" style="height:340px; display:flex; flex-direction:column; background:var(--bg-deep); padding:10px; border-radius:var(--radius); border:1px solid rgba(251,146,60,0.3); font-family:var(--font-mono); font-size:12px; color:#a6accd; overflow-y:auto; margin-top:15px;">
+            <div id="sqlmapSimOutput" style="white-space:pre-wrap; margin-bottom:10px; line-height:1.55; flex:1;">
+<span style="color:#fb923c;">        ___\n       __H__\n ___ ___[)]_____ ___ ___  {1.7.12#stable}</span>\n|_ -| . [,]     | .'| . |\n|___|_  [.]_|_|_|__,|  _|\n      |_|V...       |_|   https://sqlmap.org\n\nCyberCompanion SQLmap Simulator v1.7\nType 'sqlmap --help' for usage, or start scanning.
+            </div>
+            <div style="display:flex; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px; margin-top:4px;">
+              <span style="color:#fb923c; margin-right:8px; white-space:nowrap;">[sqlmap]$</span>
+              <input type="text" id="sqlmapSimInput" autocomplete="off" spellcheck="false" style="flex:1; background:transparent; border:none; color:#a6accd; font-family:var(--font-mono); font-size:12px; outline:none;" placeholder="Type a sqlmap command...">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    const challengesSection = document.getElementById('interactiveChallengesSection');
+    if (challengesSection) {
+      challengesSection.style.display = 'block';
+      challengesSection.insertAdjacentHTML('afterend', terminalHtml);
+    } else {
+      document.getElementById('contentArea').insertAdjacentHTML('beforeend', terminalHtml);
+    }
+    setTimeout(() => {
+      const inputEl = document.getElementById('sqlmapSimInput');
+      if (inputEl) {
+        inputEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const cmd = inputEl.value.trim();
+            if (cmd) window.__app.handleSqlmapCommand(cmd);
+            inputEl.value = '';
+          }
+        });
+      }
+    }, 100);
+  }
+
+  // ── XSS Sandbox Simulator ────────────────────────────────────────────────────
+  if (mod.id === 'xss') {
+    const xssHtml = `
+      <div class="section-card fade-in fade-in-delay-6" id="xssLabSection">
+        <div class="section-header" style="background: rgba(139, 92, 246, 0.06); border-bottom: 1px solid rgba(139, 92, 246, 0.3);">
+          <div class="section-icon concept" style="background: #8b5cf6; color: #fff;">🧪</div>
+          <h3 class="section-title" style="color: #8b5cf6;">XSS Injection Sandbox</h3>
+        </div>
+        <div class="section-body">
+          <p>A <strong>safe, isolated</strong> practice environment. Type an XSS payload below and click <strong>Inject</strong> to see it execute inside the simulated page. No Docker or lab required.</p>
+          <div style="display:flex; gap:10px; margin-top:16px; align-items:stretch;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+              <div style="background:var(--bg-deep); border:1px solid rgba(139,92,246,0.3); border-radius:var(--radius-sm); padding:12px;">
+                <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">⚡ Quick Payloads</div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  <button class="xss-payload-btn" data-payload="&lt;script&gt;alert('XSS')&lt;/script&gt;" style="padding:4px 10px; font-size:11px; font-family:var(--font-mono); background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:4px; cursor:pointer;">&lt;script&gt;alert()&lt;/script&gt;</button>
+                  <button class="xss-payload-btn" data-payload="&lt;img src=x onerror=alert('IMG XSS')&gt;" style="padding:4px 10px; font-size:11px; font-family:var(--font-mono); background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:4px; cursor:pointer;">&lt;img onerror&gt;</button>
+                  <button class="xss-payload-btn" data-payload="&lt;svg onload=alert('SVG XSS')&gt;" style="padding:4px 10px; font-size:11px; font-family:var(--font-mono); background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:4px; cursor:pointer;">&lt;svg onload&gt;</button>
+                  <button class="xss-payload-btn" data-payload="&lt;iframe src=javascript:alert('iframe XSS')&gt;" style="padding:4px 10px; font-size:11px; font-family:var(--font-mono); background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:4px; cursor:pointer;">&lt;iframe src=js:&gt;</button>
+                  <button class="xss-payload-btn" data-payload="&lt;body onload=alert('Body XSS')&gt;" style="padding:4px 10px; font-size:11px; font-family:var(--font-mono); background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:4px; cursor:pointer;">&lt;body onload&gt;</button>
+                  <button class="xss-payload-btn" data-payload="&lt;script&gt;document.body.style.background='red'&lt;/script&gt;" style="padding:4px 10px; font-size:11px; font-family:var(--font-mono); background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.4); color:#a78bfa; border-radius:4px; cursor:pointer;">Defacement</button>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <input type="text" id="xssPayloadInput" placeholder="Type or paste your XSS payload here..." autocomplete="off" style="flex:1; background:var(--bg-deep); border:1px solid rgba(139,92,246,0.4); color:var(--text-primary); font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:var(--radius-sm); outline:none;">
+                <button id="xssInjectBtn" style="padding:8px 20px; background:linear-gradient(135deg,#8b5cf6,#6d28d9); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-weight:700; font-size:13px; white-space:nowrap;">💉 Inject</button>
+                <button id="xssClearBtn" style="padding:8px 14px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-secondary); border-radius:var(--radius-sm); cursor:pointer; font-size:12px;">Clear</button>
+              </div>
+              <div id="xssResult" style="font-size:12px; padding:8px 12px; border-radius:var(--radius-sm); display:none;"></div>
+            </div>
+          </div>
+          <div style="margin-top:12px; border:2px solid rgba(139,92,246,0.4); border-radius:var(--radius); overflow:hidden;">
+            <div style="background:rgba(139,92,246,0.08); padding:8px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid rgba(139,92,246,0.2);">
+              <div style="display:flex;gap:6px;"><span style="width:12px;height:12px;background:#ff5f56;border-radius:50%;display:inline-block;"></span><span style="width:12px;height:12px;background:#ffbd2e;border-radius:50%;display:inline-block;"></span><span style="width:12px;height:12px;background:#27c93f;border-radius:50%;display:inline-block;"></span></div>
+              <span style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">🔴 VULNERABLE PAGE — http://simulated-target.local/search</span>
+            </div>
+            <iframe id="xssSandboxFrame" sandbox="allow-scripts" style="width:100%; height:260px; border:none; background:#fff;" srcdoc="&lt;html&gt;&lt;body style='font-family:Arial,sans-serif; padding:20px; background:#f8f8f8;'&gt;&lt;h3 style='color:#333;'&gt;🛍️ VulnShop — Product Search&lt;/h3&gt;&lt;div style='background:#fff; border:1px solid #ddd; padding:10px; border-radius:4px;'&gt;&lt;input type='text' placeholder='Search products...' style='width:80%;padding:6px;border:1px solid #ccc;border-radius:3px;'&gt; &lt;button style='padding:6px 14px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;'&gt;Search&lt;/button&gt;&lt;/div&gt;&lt;p style='color:#777;font-size:13px;margin-top:10px;'&gt;Showing results for: &lt;span id='search-result'&gt;(nothing yet)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"></iframe>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">⚠️ This sandbox uses a restricted iframe. Real payloads that steal cookies or make network requests won't work here (by design), but injection execution will be visible.</p>
+        </div>
+      </div>
+    `;
+    const challengesSection = document.getElementById('interactiveChallengesSection');
+    if (challengesSection) {
+      challengesSection.style.display = 'block';
+      challengesSection.insertAdjacentHTML('afterend', xssHtml);
+    } else {
+      document.getElementById('contentArea').insertAdjacentHTML('beforeend', xssHtml);
+    }
+    setTimeout(() => {
+      const payloadInput = document.getElementById('xssPayloadInput');
+      const injectBtn = document.getElementById('xssInjectBtn');
+      const clearBtn = document.getElementById('xssClearBtn');
+      const frame = document.getElementById('xssSandboxFrame');
+      const resultEl = document.getElementById('xssResult');
+
+      // Quick payload buttons
+      document.querySelectorAll('.xss-payload-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (payloadInput) payloadInput.value = btn.dataset.payload;
+        });
+      });
+
+      function injectPayload() {
+        const raw = payloadInput ? payloadInput.value.trim() : '';
+        if (!raw) return;
+        // Build a fresh srcdoc each time so payload is always injected fresh
+        const safeSearchLabel = raw; // user-supplied, injected raw (that's the point!)
+        const newDoc = `<html><head><style>body{font-family:Arial,sans-serif;padding:20px;background:#f8f8f8;}h3{color:#333;}input{width:80%;padding:6px;border:1px solid #ccc;border-radius:3px;}button{padding:6px 14px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;}.result-box{background:#fff;border:1px solid #ddd;padding:10px;border-radius:4px;margin-top:10px;}</style></head><body><h3>🛍️ VulnShop — Product Search</h3><div style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:4px;"><input type='text' value="${raw.replace(/"/g,'&quot;')}" style='width:80%;padding:6px;border:1px solid #ccc;border-radius:3px;'> <button style='padding:6px 14px;background:#e74c3c;color:#fff;border:none;border-radius:3px;'>Search</button></div><div class='result-box'><p style='color:#777;font-size:13px;'>Showing results for: ${safeSearchLabel}</p></div></body></html>`;
+        frame.srcdoc = newDoc;
+        // Check if it looks like an XSS payload
+        const isPayload = /<script|onerror|onload|javascript:|<svg|<iframe|<img/i.test(raw);
+        resultEl.style.display = 'block';
+        if (isPayload) {
+          resultEl.style.background = 'rgba(239,68,68,0.1)';
+          resultEl.style.border = '1px solid rgba(239,68,68,0.4)';
+          resultEl.style.color = '#f87171';
+          resultEl.innerHTML = '🚨 <strong>XSS Payload Detected!</strong> The application reflected your input without sanitization. In a real site, this would execute in every visitor\'s browser.';
+        } else {
+          resultEl.style.background = 'rgba(34,197,94,0.1)';
+          resultEl.style.border = '1px solid rgba(34,197,94,0.4)';
+          resultEl.style.color = '#4ade80';
+          resultEl.innerHTML = '✅ Input reflected but <strong>no script injection detected</strong>. Try adding HTML tags like <code>&lt;script&gt;</code> or <code>onerror</code>.';
+        }
+      }
+
+      if (injectBtn) injectBtn.addEventListener('click', injectPayload);
+      if (payloadInput) payloadInput.addEventListener('keydown', e => { if (e.key === 'Enter') injectPayload(); });
+      if (clearBtn) clearBtn.addEventListener('click', () => {
+        if (payloadInput) payloadInput.value = '';
+        resultEl.style.display = 'none';
+        frame.srcdoc = "<html><body style='font-family:Arial,sans-serif;padding:20px;background:#f8f8f8;'><h3 style='color:#333;'>🛍️ VulnShop — Product Search</h3><div style='background:#fff;border:1px solid #ddd;padding:10px;border-radius:4px;'><input type='text' placeholder='Search products...' style='width:80%;padding:6px;border:1px solid #ccc;border-radius:3px;'> <button style='padding:6px 14px;background:#e74c3c;color:#fff;border:none;border-radius:3px;cursor:pointer;'>Search</button></div><p style='color:#777;font-size:13px;margin-top:10px;'>Showing results for: <span id='search-result'>(nothing yet)</span></p></body></html>";
+      });
+    }, 100);
+  }
+
+  // ── Burp Suite Interceptor Practice ─────────────────────────────────────────
+  if (mod.id === 'burp-proxy') {
+    const burpLabHtml = `
+      <div class="section-card fade-in fade-in-delay-6" id="burpLabSection">
+        <div class="section-header" style="background: rgba(0,240,255,0.05); border-bottom: 1px solid var(--border-accent);">
+          <div class="section-icon concept" style="background: var(--cyan); color: #000;">🛡️</div>
+          <h3 class="section-title" style="color: var(--cyan);">Proxy Intercept Practice Lab</h3>
+        </div>
+        <div class="section-body">
+          <p>Practice intercepting and modifying HTTP requests <strong>without needing Docker</strong>. Fill in the login form below and click Submit — the request will be intercepted by the Mini Proxy panel. Modify the payload and forward it to see the result.</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:16px;">
+            <!-- Simulated Login Page -->
+            <div style="background:var(--bg-deep); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;">
+              <div style="background:rgba(0,0,0,0.3); padding:8px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border);">
+                <div style="display:flex;gap:5px;"><span style="width:10px;height:10px;background:#ff5f56;border-radius:50%;display:inline-block;"></span><span style="width:10px;height:10px;background:#ffbd2e;border-radius:50%;display:inline-block;"></span><span style="width:10px;height:10px;background:#27c93f;border-radius:50%;display:inline-block;"></span></div>
+                <span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);">http://simulated-target.local/login</span>
+              </div>
+              <div style="padding:24px;">
+                <h4 style="color:var(--text-primary); margin:0 0 16px 0;">🔐 Login</h4>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <input type="email" id="burpLabEmail" value="user@company.com" style="padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-primary); border-radius:4px; font-size:13px; font-family:var(--font-mono);">
+                  <input type="password" id="burpLabPass" value="mypassword" style="padding:8px 12px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-primary); border-radius:4px; font-size:13px; font-family:var(--font-mono);">
+                  <button id="burpLabSubmit" style="padding:10px; background:linear-gradient(135deg,var(--cyan),var(--violet)); color:#000; font-weight:700; border:none; border-radius:4px; cursor:pointer; font-size:13px;">Submit (Intercept ON)</button>
+                </div>
+              </div>
+            </div>
+            <!-- Intercepted Request Display -->
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">📡 Intercepted Request</div>
+              <textarea id="burpLabIntercepted" rows="8" spellcheck="false" style="width:100%; box-sizing:border-box; background:var(--bg-deep); border:1px solid var(--cyan); color:#a6accd; font-family:var(--font-mono); font-size:11px; padding:10px; border-radius:4px; resize:vertical; outline:none;">— Submit the form to intercept a request —</textarea>
+              <div style="display:flex; gap:8px;">
+                <button id="burpLabForward" style="flex:1; padding:8px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.4); color:#4ade80; border-radius:4px; cursor:pointer; font-weight:700;">▶ Forward</button>
+                <button id="burpLabDrop" style="flex:1; padding:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#f87171; border-radius:4px; cursor:pointer; font-weight:700;">✕ Drop</button>
+              </div>
+              <div id="burpLabResponse" style="display:none; padding:10px; border-radius:4px; font-size:12px; font-family:var(--font-mono);"></div>
+            </div>
+          </div>
+          <div style="margin-top:14px; padding:10px 14px; background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:4px; font-size:12px; color:var(--text-secondary);">
+            💡 <strong>Try it:</strong> After intercepting, change the email to <code>admin@company.com'--</code> and click Forward. This simulates SQL Injection via Burp!
+          </div>
+        </div>
+      </div>
+    `;
+    const challengesSection = document.getElementById('interactiveChallengesSection');
+    if (challengesSection) {
+      challengesSection.style.display = 'block';
+      challengesSection.insertAdjacentHTML('afterend', burpLabHtml);
+    } else {
+      document.getElementById('contentArea').insertAdjacentHTML('beforeend', burpLabHtml);
+    }
+    setTimeout(() => {
+      const submitBtn = document.getElementById('burpLabSubmit');
+      const emailIn = document.getElementById('burpLabEmail');
+      const passIn = document.getElementById('burpLabPass');
+      const interceptedArea = document.getElementById('burpLabIntercepted');
+      const forwardBtn = document.getElementById('burpLabForward');
+      const dropBtn = document.getElementById('burpLabDrop');
+      const responseEl = document.getElementById('burpLabResponse');
+
+      if (submitBtn) submitBtn.addEventListener('click', () => {
+        const email = emailIn ? emailIn.value : 'user@company.com';
+        const pass = passIn ? passIn.value : 'mypassword';
+        const raw = `POST /rest/user/login HTTP/1.1\nHost: simulated-target.local\nContent-Type: application/json\nContent-Length: ${JSON.stringify({email,password:pass}).length}\nUser-Agent: Mozilla/5.0 (Windows NT 10.0)\nCookie: token=abc123xyz\n\n${JSON.stringify({email, password: pass}, null, 2)}`;
+        if (interceptedArea) interceptedArea.value = raw;
+        if (responseEl) responseEl.style.display = 'none';
+        submitBtn.textContent = '⏸ Request Intercepted!';
+        submitBtn.style.background = 'rgba(239,68,68,0.3)';
+        setTimeout(() => { submitBtn.textContent = 'Submit (Intercept ON)'; submitBtn.style.background = 'linear-gradient(135deg,var(--cyan),var(--violet))'; }, 3000);
+      });
+
+      if (forwardBtn) forwardBtn.addEventListener('click', () => {
+        const req = interceptedArea ? interceptedArea.value : '';
+        const isSQLi = /['"-]{1,2}(--|#|;|or\s+1=1|union\s+select)/i.test(req);
+        const isAdminEmail = /admin@/i.test(req);
+        responseEl.style.display = 'block';
+        if (isSQLi || isAdminEmail) {
+          responseEl.style.background = 'rgba(239,68,68,0.1)';
+          responseEl.style.border = '1px solid rgba(239,68,68,0.4)';
+          responseEl.style.color = '#f87171';
+          responseEl.innerHTML = '🚨 <strong>HTTP/1.1 200 OK</strong><br>{ "authentication": { "token": "eyJhbGciOiJSUzI1NiJ9...", "umail": "admin@company.com" } }<br><br>⚠️ <em>SQLi payload or admin account bypass accepted! You\'re in as admin.</em>';
+        } else {
+          responseEl.style.background = 'rgba(34,197,94,0.1)';
+          responseEl.style.border = '1px solid rgba(34,197,94,0.4)';
+          responseEl.style.color = '#4ade80';
+          responseEl.innerHTML = '✅ <strong>HTTP/1.1 401 Unauthorized</strong><br>{ "error": "Invalid email or password" }<br><br>Request forwarded normally. Try modifying the email with a SQLi payload!';
+        }
+      });
+
+      if (dropBtn) dropBtn.addEventListener('click', () => {
+        if (interceptedArea) interceptedArea.value = '— Request dropped. Submit again to intercept —';
+        if (responseEl) responseEl.style.display = 'none';
+      });
+    }, 100);
+  }
+
+  // ── SQL Injection Practice Terminal ─────────────────────────────────────────
+  if (mod.id === 'sqli') {
+    const sqliLabHtml = `
+      <div class="section-card fade-in fade-in-delay-6" id="sqliLabSection">
+        <div class="section-header" style="background: rgba(239,68,68,0.06); border-bottom: 1px solid rgba(239,68,68,0.3);">
+          <div class="section-icon concept" style="background: #ef4444; color: #fff;">🎯</div>
+          <h3 class="section-title" style="color: #ef4444;">SQLi Practice Lab — No Docker Required</h3>
+        </div>
+        <div class="section-body">
+          <p>Test SQL injection payloads against a simulated login form. This lab works <strong>instantly</strong> — no lab setup needed. Observe how different payloads bypass or fail authentication.</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:16px;">
+            <div style="background:var(--bg-deep); border:1px solid rgba(239,68,68,0.3); border-radius:var(--radius); overflow:hidden;">
+              <div style="background:rgba(0,0,0,0.3); padding:8px 14px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <span style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">SELECT * FROM users WHERE email='?' AND password='?'</span>
+              </div>
+              <div style="padding:20px; display:flex; flex-direction:column; gap:10px;">
+                <div>
+                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">EMAIL / USERNAME</label>
+                  <input type="text" id="sqliEmail" value="' OR 1=1--" style="width:100%;box-sizing:border-box;padding:8px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(239,68,68,0.4);color:var(--text-primary);border-radius:4px;font-family:var(--font-mono);font-size:12px;outline:none;">
+                </div>
+                <div>
+                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">PASSWORD</label>
+                  <input type="text" id="sqliPass" value="anything" style="width:100%;box-sizing:border-box;padding:8px 10px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--font-mono);font-size:12px;outline:none;">
+                </div>
+                <button id="sqliSubmit" style="padding:10px; background:linear-gradient(135deg,#ef4444,#b91c1c); color:#fff; font-weight:700; border:none; border-radius:4px; cursor:pointer;">🎯 Submit Injection</button>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">🖥️ Server Response</div>
+              <div id="sqliResponse" style="flex:1; background:var(--bg-deep); border:1px solid var(--border); border-radius:4px; padding:14px; font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); min-height:120px;">Submit a payload to see the server's response...</div>
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">📋 Generated SQL</div>
+              <div id="sqliGeneratedSQL" style="background:var(--bg-deep); border:1px solid var(--border); border-radius:4px; padding:10px; font-family:var(--font-mono); font-size:11px; color:#64748b; white-space:pre-wrap;">SELECT * FROM users WHERE email='?' AND password='?'</div>
+            </div>
+          </div>
+          <div style="margin-top:14px; background:var(--bg-deep); border:1px solid var(--border); border-radius:4px; padding:12px;">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">⚡ COMMON PAYLOADS — Click to load:</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              <button class="sqli-payload-btn" data-email="' OR 1=1--" data-pass="anything" style="padding:4px 10px;font-size:11px;font-family:var(--font-mono);background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:4px;cursor:pointer;">' OR 1=1--</button>
+              <button class="sqli-payload-btn" data-email="admin@site.com'--" data-pass="anything" style="padding:4px 10px;font-size:11px;font-family:var(--font-mono);background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:4px;cursor:pointer;">admin'--</button>
+              <button class="sqli-payload-btn" data-email="' UNION SELECT 1,username,password FROM users--" data-pass="x" style="padding:4px 10px;font-size:11px;font-family:var(--font-mono);background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:4px;cursor:pointer;">UNION SELECT</button>
+              <button class="sqli-payload-btn" data-email="' OR 'a'='a" data-pass="' OR 'a'='a" style="padding:4px 10px;font-size:11px;font-family:var(--font-mono);background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:4px;cursor:pointer;">'OR'a'='a</button>
+              <button class="sqli-payload-btn" data-email="normal@user.com" data-pass="correctpassword" style="padding:4px 10px;font-size:11px;font-family:var(--font-mono);background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:4px;cursor:pointer;">✅ Valid Login</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    const challengesSection = document.getElementById('interactiveChallengesSection');
+    if (challengesSection) {
+      challengesSection.style.display = 'block';
+      challengesSection.insertAdjacentHTML('afterend', sqliLabHtml);
+    } else {
+      document.getElementById('contentArea').insertAdjacentHTML('beforeend', sqliLabHtml);
+    }
+    setTimeout(() => {
+      const emailIn = document.getElementById('sqliEmail');
+      const passIn = document.getElementById('sqliPass');
+      const submitBtn = document.getElementById('sqliSubmit');
+      const responseEl = document.getElementById('sqliResponse');
+      const sqlEl = document.getElementById('sqliGeneratedSQL');
+
+      document.querySelectorAll('.sqli-payload-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (emailIn) emailIn.value = btn.dataset.email;
+          if (passIn) passIn.value = btn.dataset.pass;
+        });
+      });
+
+      function evalSQLi() {
+        const email = emailIn ? emailIn.value : '';
+        const pass = passIn ? passIn.value : '';
+        const generatedSQL = `SELECT * FROM users WHERE email='${email}' AND password='${pass}'`;
+        if (sqlEl) sqlEl.textContent = generatedSQL;
+
+        const isBypass = /'\s*(or|OR)\s+["']?1["']?\s*=\s*["']?1["']?/i.test(email + pass)
+          || /(--|#)\s*$/.test(email)
+          || /'\s*(or|OR)\s+'\w+'\s*=\s*'\w+/i.test(email + pass)
+          || /union\s+select/i.test(email + pass);
+        const isUnion = /union\s+select/i.test(email + pass);
+        const isValid = email === 'normal@user.com' && pass === 'correctpassword';
+
+        if (isUnion) {
+          responseEl.style.background = 'rgba(251,146,60,0.1)';
+          responseEl.style.border = '1px solid rgba(251,146,60,0.4)';
+          responseEl.style.color = '#fb923c';
+          responseEl.innerHTML = '⚠️ <strong>UNION-based Injection Detected</strong><br><br>Database dump:<br>admin@site.com : $2b$12$hash1...<br>user@site.com : $2b$12$hash2...<br><br><em>All user records extracted!</em>';
+        } else if (isBypass) {
+          responseEl.style.background = 'rgba(239,68,68,0.1)';
+          responseEl.style.border = '1px solid rgba(239,68,68,0.4)';
+          responseEl.style.color = '#f87171';
+          responseEl.innerHTML = '🚨 <strong>Authentication Bypassed!</strong><br><br>Logged in as: <strong>admin@site.com</strong><br>Role: <strong>Administrator</strong><br>Token: eyJhbGciOiJSUzI1NiJ9...<br><br><em>The WHERE clause was broken by your injection.</em>';
+        } else if (isValid) {
+          responseEl.style.background = 'rgba(34,197,94,0.1)';
+          responseEl.style.border = '1px solid rgba(34,197,94,0.4)';
+          responseEl.style.color = '#4ade80';
+          responseEl.innerHTML = '✅ <strong>Login Successful</strong><br><br>Welcome back, normal@user.com<br>Role: user<br><br><em>This is a legitimate authentication — no injection.</em>';
+        } else {
+          responseEl.style.background = 'rgba(255,255,255,0.03)';
+          responseEl.style.border = '1px solid var(--border)';
+          responseEl.style.color = 'var(--text-secondary)';
+          responseEl.innerHTML = '❌ <strong>401 Unauthorized</strong><br><br>Invalid email or password.<br><br><em>Payload did not bypass authentication. Try a different injection.</em>';
+        }
+      }
+
+      if (submitBtn) submitBtn.addEventListener('click', evalSQLi);
+      if (emailIn) emailIn.addEventListener('keydown', e => { if (e.key === 'Enter') evalSQLi(); });
+    }, 100);
+  }
+
+  // ── Network Traffic Analyst Simulator ───────────────────────────────────────
+  if (mod.id === 'net-analyst') {
+    const packetLabHtml = `
+      <div class="section-card fade-in fade-in-delay-6" id="packetLabSection">
+        <div class="section-header" style="background: rgba(34,211,238,0.05); border-bottom: 1px solid rgba(34,211,238,0.3);">
+          <div class="section-icon concept" style="background: #22d3ee; color: #000;">📡</div>
+          <h3 class="section-title" style="color: #22d3ee;">Live Packet Capture Simulator</h3>
+        </div>
+        <div class="section-body">
+          <p>Analyze a simulated packet stream. Use the filter bar to isolate suspicious traffic. Click any packet to inspect it. <strong>Find the malicious beacon hidden in the traffic!</strong></p>
+          <div style="display:flex; gap:10px; margin-top:16px; align-items:center; flex-wrap:wrap;">
+            <input type="text" id="packetFilter" placeholder="Display filter (e.g.: http, dns, ip.dst==13.37.13.37, tcp.dstport==4444)" style="flex:1;min-width:200px;padding:7px 12px;background:var(--bg-deep);border:1px solid rgba(34,211,238,0.4);color:var(--text-primary);font-family:var(--font-mono);font-size:12px;border-radius:4px;outline:none;">
+            <button id="packetFilterBtn" style="padding:7px 16px;background:rgba(34,211,238,0.15);border:1px solid rgba(34,211,238,0.4);color:#22d3ee;border-radius:4px;cursor:pointer;font-weight:700;">Apply</button>
+            <button id="packetClearFilter" style="padding:7px 12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;cursor:pointer;">Clear</button>
+            <button id="packetStartCapture" style="padding:7px 16px;background:linear-gradient(135deg,#22d3ee,#0ea5e9);color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:700;">▶ Start Capture</button>
+          </div>
+          <div style="margin-top:12px; border:1px solid rgba(34,211,238,0.2); border-radius:var(--radius); overflow:hidden;">
+            <div style="background:rgba(0,0,0,0.4); padding:6px 12px; display:grid; grid-template-columns:50px 90px 1fr 1fr 80px 60px; gap:8px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid rgba(255,255,255,0.05);">
+              <span>No.</span><span>Time</span><span>Source</span><span>Destination</span><span>Protocol</span><span>Length</span>
+            </div>
+            <div id="packetList" style="height:240px; overflow-y:auto; background:var(--bg-deep);"></div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+            <div>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase;">📋 Packet Detail</div>
+              <div id="packetDetail" style="background:var(--bg-deep); border:1px solid var(--border); border-radius:4px; padding:12px; font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); height:130px; overflow-y:auto;">Click a packet to inspect it...</div>
+            </div>
+            <div>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase;">🔍 Analysis Result</div>
+              <div id="packetAnalysis" style="background:var(--bg-deep); border:1px solid var(--border); border-radius:4px; padding:12px; font-size:12px; color:var(--text-secondary); height:130px; overflow-y:auto;">Select a suspicious packet to trigger analysis...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    const challengesSection = document.getElementById('interactiveChallengesSection');
+    if (challengesSection) {
+      challengesSection.style.display = 'block';
+      challengesSection.insertAdjacentHTML('afterend', packetLabHtml);
+    } else {
+      document.getElementById('contentArea').insertAdjacentHTML('beforeend', packetLabHtml);
+    }
+    setTimeout(() => window.__app.initPacketLab(), 100);
   }
 
   // Setup copy buttons
@@ -2355,6 +2830,251 @@ Type 'hydra' for full usage.`;
   }, delay);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SQLMAP SIMULATOR
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+function handleSqlmapCommand(cmd) {
+  const outputEl = document.getElementById('sqlmapSimOutput');
+  const terminalEl = document.getElementById('sqlmapSimTerminal');
+  if (!outputEl) return;
+
+  outputEl.innerHTML += `\n<span style="color:#fb923c;">[sqlmap]$ </span>${escapeHtml(cmd)}\n`;
+  terminalEl.scrollTop = terminalEl.scrollHeight;
+
+  if (cmd === 'sqlmap --help' || cmd === 'sqlmap -h') {
+    outputEl.innerHTML += `<span style="color:#fb923c;">Usage:</span> sqlmap [options]\n\n<span style="color:#fb923c;">Target:</span>\n  -u URL             Target URL (e.g. http://site.com/page?id=1)\n  -r FILE            Load HTTP request from file\n\n<span style="color:#fb923c;">Detection:</span>\n  --level=LEVEL      Detection level (1-5, default: 1)\n  --risk=RISK        Risk of tests (1-3, default: 1)\n\n<span style="color:#fb923c;">Techniques:</span>\n  --technique=TECH   SQL injection techniques (B/E/U/S/T/Q)\n                     B=Boolean, E=Error, U=Union, T=Time\n\n<span style="color:#fb923c;">Enumeration:</span>\n  --dbs              Enumerate DBMS databases\n  --tables           Enumerate tables\n  --columns          Enumerate columns\n  --dump             Dump table entries\n  -D DB              DBMS database to enumerate\n  -T TBL             Table to enumerate\n\n<span style="color:#fb923c;">Fingerprint:</span>\n  -b, --banner       Retrieve DBMS banner\n  --current-user     Retrieve current DB user\n  --current-db       Retrieve current DB\n\n<span style="color:#fb923c;">Examples:</span>\n  sqlmap -u "http://target.com/item?id=1" --dbs\n  sqlmap -u "http://target.com/item?id=1" -D shopdb --tables\n  sqlmap -u "http://target.com/item?id=1" -D shopdb -T users --dump\n`;
+    terminalEl.scrollTop = terminalEl.scrollHeight;
+    return;
+  }
+
+  if (!cmd.startsWith('sqlmap')) {
+    outputEl.innerHTML += `<span style="color:var(--danger);">Command not found. Type 'sqlmap --help' for usage.</span>\n`;
+    terminalEl.scrollTop = terminalEl.scrollHeight;
+    return;
+  }
+
+  const hasUrl = /-u\s+["']?https?:\/\//i.test(cmd);
+  if (!hasUrl && !cmd.includes('-r ')) {
+    outputEl.innerHTML += `<span style="color:var(--danger);">No target URL specified. Use: sqlmap -u "http://target.com/page?id=1"</span>\n`;
+    terminalEl.scrollTop = terminalEl.scrollHeight;
+    return;
+  }
+
+  const urlMatch = cmd.match(/-u\s+["']?(https?:\/\/[^\s"']+)["']?/i);
+  const targetUrl = urlMatch ? urlMatch[1] : 'http://target.com/vuln?id=1';
+  const targetHost = targetUrl.split('/')[2] || 'target.com';
+  const hasDbs = cmd.includes('--dbs');
+  const hasTables = cmd.includes('--tables');
+  const hasDump = cmd.includes('--dump');
+  const hasColumns = cmd.includes('--columns');
+  const hasBanner = cmd.includes('-b') || cmd.includes('--banner');
+  const hasCurrentUser = cmd.includes('--current-user');
+  const hasCurrentDb = cmd.includes('--current-db');
+  const dbFlag = cmd.match(/-D\s+(\S+)/)?.[1];
+  const tblFlag = cmd.match(/-T\s+(\S+)/)?.[1];
+  const level = cmd.match(/--level=(\d)/)?.[1] || '1';
+  const risk = cmd.match(/--risk=(\d)/)?.[1] || '1';
+
+  outputEl.innerHTML += `<span style="color:var(--text-muted);">        ___\n       __H__\n ___ ___[)]_____ ___ ___  {1.7.12#stable}</span>\n`;
+  outputEl.innerHTML += `[*] starting @ ${new Date().toLocaleTimeString()}\n`;
+  outputEl.innerHTML += `[*] testing connection to target URL...\n`;
+  terminalEl.scrollTop = terminalEl.scrollHeight;
+
+  const delay = hasDump ? 2200 : hasTables ? 1800 : 1400;
+  outputEl.innerHTML += `<span id="sqlmapLoading" style="color:var(--text-muted);">testing...</span>`;
+
+  setTimeout(() => {
+    const loading = document.getElementById('sqlmapLoading');
+    if (loading) loading.remove();
+
+    outputEl.innerHTML += `[*] testing if the target URL content is stable... <span style="color:var(--success);">yes</span>\n`;
+    outputEl.innerHTML += `[*] testing if GET parameter 'id' is dynamic... <span style="color:var(--success);">yes</span>\n`;
+    outputEl.innerHTML += `[*] heuristic (basic) test shows that GET parameter 'id' might be injectable\n`;
+    outputEl.innerHTML += `[*] testing for SQL injection on GET parameter 'id'\n`;
+    outputEl.innerHTML += `[*] testing 'AND boolean-based blind - WHERE or HAVING clause'\n`;
+    outputEl.innerHTML += `[*] GET parameter 'id' appears to be <span style="color:var(--success);">Boolean-based injectable</span>\n`;
+    outputEl.innerHTML += `[*] testing 'MySQL >= 5.0.12 AND time-based blind'\n`;
+    outputEl.innerHTML += `[*] GET parameter 'id' appears to be <span style="color:var(--success);">Time-based injectable (stacked queries)</span>\n`;
+    outputEl.innerHTML += `[*] testing 'Generic UNION query (NULL) - 1 to 20 columns'\n`;
+    outputEl.innerHTML += `[*] automatically extending ranges for UNION query injection technique\n`;
+    outputEl.innerHTML += `[*] <span style="color:var(--success);">target URL appears to be UNION injectable with 3 columns</span>\n\n`;
+    outputEl.innerHTML += `<span style="color:var(--success);">sqlmap identified the following injection point(s):</span>\n`;
+    outputEl.innerHTML += `---\nParameter: id (GET)\n    Type: boolean-based blind\n    Title: AND boolean-based blind - WHERE or HAVING clause\n    Payload: id=1 AND 1871=1871\n\n    Type: time-based blind\n    Title: MySQL >= 5.0.12 AND time-based blind (query SLEEP)\n    Payload: id=1 AND SLEEP(5)\n\n    Type: UNION query\n    Title: Generic UNION query (NULL) - 3 columns\n    Payload: id=NULL UNION ALL SELECT NULL,CONCAT(0x7162717071,...),NULL--\n---\n`;
+
+    const dbms = 'MySQL >= 5.0 (MariaDB fork)';
+    outputEl.innerHTML += `[*] the back-end DBMS is <span style="color:#fb923c;">${dbms}</span>\n`;
+
+    if (hasBanner) outputEl.innerHTML += `[*] fetching banner\nbanner: '5.7.40-0ubuntu0.22.04.1'\n`;
+    if (hasCurrentUser) outputEl.innerHTML += `[*] fetching current user\ncurrent user: 'webapp@localhost'\n`;
+    if (hasCurrentDb) outputEl.innerHTML += `[*] fetching current database\ncurrent database: 'shopdb'\n`;
+
+    if (hasDbs) {
+      outputEl.innerHTML += `\n[*] fetching database names\n[*] retrieved: 3\navailable databases [3]:\n[*] information_schema\n[*] <span style="color:var(--success);">shopdb</span>\n[*] mysql\n`;
+    }
+    if (hasTables && dbFlag) {
+      outputEl.innerHTML += `\n[*] fetching tables for database: '${dbFlag}'\n[*] retrieved: 4\nDatabase: ${dbFlag}\n[4 tables]\n+----------+\n| users    |\n| products |\n| orders   |\n| sessions |\n+----------+\n`;
+    }
+    if (hasColumns && dbFlag && tblFlag) {
+      outputEl.innerHTML += `\n[*] fetching columns for table '${tblFlag}' in database '${dbFlag}'\nDatabase: ${dbFlag}\nTable: ${tblFlag}\n[4 columns]\n+----------+--------------+\n| Column   | Type         |\n+----------+--------------+\n| id       | int(11)      |\n| email    | varchar(200) |\n| password | varchar(300) |\n| role     | varchar(50)  |\n+----------+--------------+\n`;
+    }
+    if (hasDump && dbFlag && tblFlag) {
+      outputEl.innerHTML += `\n[*] fetching entries of column(s) 'email,password,role' for table '${tblFlag}' in database '${dbFlag}'\n[*] recognized possible password hashes in column 'password'\nDatabase: ${dbFlag}\nTable: ${tblFlag}\n[3 entries]\n+---------+-----------------------------+----------+\n| id      | email                       | role     |\n+---------+-----------------------------+----------+\n| 1       | <span style="color:var(--danger);">admin@company.com</span>           | <span style="color:#fb923c;">admin</span>    |\n| 2       | alice@company.com           | user     |\n| 3       | bob@company.com             | user     |\n+---------+-----------------------------+----------+\n\n<span style="color:var(--success);">table dumped to '/root/.local/share/sqlmap/output/${targetHost}/dump/${dbFlag}/${tblFlag}.csv'</span>\n`;
+    }
+    if (!hasDbs && !hasTables && !hasDump && !hasColumns && !hasBanner && !hasCurrentUser && !hasCurrentDb) {
+      outputEl.innerHTML += `\n[*] <span style="color:#fb923c;">Tip:</span> Vulnerability confirmed! Now enumerate with:\n    --dbs              (list databases)\n    -D shopdb --tables (list tables)\n    -D shopdb -T users --dump  (dump user table)\n`;
+    }
+    outputEl.innerHTML += `\n[*] ending @ ${new Date().toLocaleTimeString()}\n`;
+    terminalEl.scrollTop = terminalEl.scrollHeight;
+  }, delay);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PACKET LAB SIMULATOR
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+function initPacketLab() {
+  const listEl = document.getElementById('packetList');
+  const detailEl = document.getElementById('packetDetail');
+  const analysisEl = document.getElementById('packetAnalysis');
+  const filterInput = document.getElementById('packetFilter');
+  const filterBtn = document.getElementById('packetFilterBtn');
+  const clearFilterBtn = document.getElementById('packetClearFilter');
+  const startBtn = document.getElementById('packetStartCapture');
+  if (!listEl) return;
+
+  let packetIndex = 0;
+  let captureInterval = null;
+  let allPackets = [];
+
+  const normalPackets = [
+    { proto:'HTTP',  src:'192.168.1.10',   dst:'93.184.216.34', len:341, info:'GET /index.html HTTP/1.1', malicious:false },
+    { proto:'DNS',   src:'192.168.1.10',   dst:'8.8.8.8',       len:66,  info:'Standard query A example.com', malicious:false },
+    { proto:'TLS',   src:'192.168.1.10',   dst:'172.217.14.206',len:583, info:'Application Data (encrypted)', malicious:false },
+    { proto:'HTTP',  src:'192.168.1.105',  dst:'93.184.216.34', len:198, info:'GET /images/logo.png HTTP/1.1', malicious:false },
+    { proto:'TCP',   src:'192.168.1.10',   dst:'10.0.0.1',      len:60,  info:'[SYN] Seq=0 Win=65535', malicious:false },
+    { proto:'DNS',   src:'192.168.1.15',   dst:'8.8.8.8',       len:74,  info:'Standard query A api.company.com', malicious:false },
+    { proto:'HTTP',  src:'192.168.1.22',   dst:'203.0.113.10',  len:420, info:'POST /rest/user/login HTTP/1.1', malicious:false },
+    { proto:'ARP',   src:'192.168.1.1',    dst:'ff:ff:ff:ff',   len:42,  info:'Who has 192.168.1.50? Tell 192.168.1.1', malicious:false },
+    { proto:'ICMP',  src:'192.168.1.10',   dst:'192.168.1.1',   len:74,  info:'Echo (ping) request id=0x01', malicious:false },
+    { proto:'TLS',   src:'192.168.1.33',   dst:'151.101.1.140', len:1452,info:'Application Data', malicious:false },
+  ];
+
+  const maliciousPackets = [
+    { proto:'DNS',  src:'192.168.1.105', dst:'8.8.8.8',    len:98,  info:'Query A 6d616c776172652d646174612e evil-c2.net (long subdomain!)', malicious:true, detail:'DNS Exfiltration beacon!\nSubdomain encodes base64 data: "malware-data"\nDestination: evil-c2.net (known C2 domain)\nAction: Block outbound DNS to evil-c2.net' },
+    { proto:'TCP',  src:'192.168.1.105', dst:'13.37.13.37', len:52, info:'[SYN] → 13.37.13.37:4444 (known RAT port)', malicious:true, detail:'C2 Beacon detected!\nDst Port: 4444 (Metasploit default listener)\nRemote IP: 13.37.13.37 (threat intel: known C2)\nPattern: Repeating every 60s (beacon interval)\nAction: Block outbound TCP/4444, isolate host' },
+    { proto:'HTTP', src:'192.168.1.105', dst:'203.0.113.99', len:310, info:'GET /api/users?id=1 UNION SELECT username,password,NULL FROM users--', malicious:true, detail:'SQL Injection in URL!\nPayload: UNION SELECT ...\nTarget endpoint: /api/users\nDatabase data at risk: all user credentials\nAction: WAF block, patch parameterized queries' },
+    { proto:'FTP',  src:'192.168.1.20',  dst:'203.0.113.5', len:44,  info:'Request: PASS s3cr3t_p@ssw0rd (PLAINTEXT!)', malicious:true, detail:'Plaintext Credentials Exposed!\nProtocol: FTP (no encryption)\nPassword transmitted in clear text\nAnyone on the network can see this!\nAction: Disable FTP, enforce SFTP/SCP' },
+  ];
+
+  function renderPacket(pkt, num, ts) {
+    const row = document.createElement('div');
+    const color = pkt.malicious ? '#ef4444' : '#a6accd';
+    row.style.cssText = `display:grid; grid-template-columns:50px 90px 1fr 1fr 80px 60px; gap:8px; padding:4px 12px; font-family:var(--font-mono); font-size:11px; color:${color}; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.03);`;
+    row.innerHTML = `<span>${num}</span><span>${ts}</span><span>${pkt.src}</span><span>${pkt.dst}</span><span style="color:${pkt.proto==='HTTP'?'#22d3ee':pkt.proto==='DNS'?'#a78bfa':pkt.proto==='TLS'?'#4ade80':color};">${pkt.proto}</span><span>${pkt.len}</span>`;
+    row.title = pkt.info;
+    row.addEventListener('click', () => {
+      listEl.querySelectorAll('div').forEach(r => r.style.background = '');
+      row.style.background = pkt.malicious ? 'rgba(239,68,68,0.15)' : 'rgba(34,211,238,0.1)';
+      if (detailEl) {
+        detailEl.innerHTML = `<span style="color:#22d3ee;">Frame ${num}: ${pkt.len} bytes captured</span>\nTime: ${ts}\nSrc: ${pkt.src}\nDst: ${pkt.dst}\nProtocol: ${pkt.proto}\nInfo: ${escapeHtml(pkt.info)}`;
+      }
+      if (analysisEl) {
+        if (pkt.malicious) {
+          analysisEl.style.background = 'rgba(239,68,68,0.08)';
+          analysisEl.style.border = '1px solid rgba(239,68,68,0.4)';
+          analysisEl.style.color = '#f87171';
+          analysisEl.innerHTML = '🚨 <strong>THREAT DETECTED</strong><br><pre style="font-family:var(--font-mono);font-size:10px;color:#f87171;white-space:pre-wrap;">' + escapeHtml(pkt.detail) + '</pre>';
+        } else {
+          analysisEl.style.background = '';
+          analysisEl.style.border = '1px solid var(--border)';
+          analysisEl.style.color = 'var(--text-secondary)';
+          analysisEl.innerHTML = '✅ <strong>Benign traffic</strong> — No indicators of compromise detected in this packet.';
+        }
+      }
+    });
+    return row;
+  }
+
+  function getFilter() { return filterInput ? filterInput.value.trim().toLowerCase() : ''; }
+
+  function matchesFilter(pkt, filter) {
+    if (!filter) return true;
+    const f = filter;
+    if (f === 'http') return pkt.proto === 'HTTP';
+    if (f === 'dns') return pkt.proto === 'DNS';
+    if (f === 'tcp') return pkt.proto === 'TCP';
+    if (f === 'tls' || f === 'ssl') return pkt.proto === 'TLS';
+    if (f === 'ftp') return pkt.proto === 'FTP';
+    if (f === 'icmp') return pkt.proto === 'ICMP';
+    if (f.includes('ip.dst==')) { const ip = f.split('==')[1]; return pkt.dst.includes(ip); }
+    if (f.includes('ip.src==')) { const ip = f.split('==')[1]; return pkt.src.includes(ip); }
+    if (f.includes('ip.addr==')) { const ip = f.split('==')[1]; return pkt.src.includes(ip) || pkt.dst.includes(ip); }
+    if (f.includes('tcp.dstport==')) { const port = f.split('==')[1]; return pkt.info.includes(':' + port); }
+    if (f.includes('dns contains')) { const term = f.split('"')[1] || ''; return pkt.proto === 'DNS' && pkt.info.toLowerCase().includes(term); }
+    // Generic text match
+    return pkt.info.toLowerCase().includes(f) || pkt.proto.toLowerCase().includes(f) || pkt.src.includes(f) || pkt.dst.includes(f);
+  }
+
+  function redrawFiltered() {
+    const filter = getFilter();
+    listEl.innerHTML = '';
+    allPackets.forEach((p, i) => {
+      if (matchesFilter(p, filter)) {
+        listEl.appendChild(renderPacket(p.pkt, p.num, p.ts));
+      }
+    });
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  if (filterBtn) filterBtn.addEventListener('click', redrawFiltered);
+  if (filterInput) filterInput.addEventListener('keydown', e => { if (e.key === 'Enter') redrawFiltered(); });
+  if (clearFilterBtn) clearFilterBtn.addEventListener('click', () => { if (filterInput) filterInput.value = ''; redrawFiltered(); });
+
+  function addPacket(pkt) {
+    packetIndex++;
+    const now = new Date();
+    const ts = now.toLocaleTimeString('en-US', {hour12:false}) + '.' + String(now.getMilliseconds()).padStart(3,'0');
+    allPackets.push({ pkt, num: packetIndex, ts });
+    const filter = getFilter();
+    if (matchesFilter(pkt, filter)) {
+      const row = renderPacket(pkt, packetIndex, ts);
+      listEl.appendChild(row);
+      listEl.scrollTop = listEl.scrollHeight;
+    }
+  }
+
+  if (startBtn) startBtn.addEventListener('click', () => {
+    if (captureInterval) {
+      clearInterval(captureInterval);
+      captureInterval = null;
+      startBtn.textContent = '▶ Start Capture';
+      startBtn.style.background = 'linear-gradient(135deg,#22d3ee,#0ea5e9)';
+      return;
+    }
+    startBtn.textContent = '⏹ Stop Capture';
+    startBtn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)';
+    let tick = 0;
+    // Seed with one malicious packet randomly among the first 20
+    const maliciousSlots = [5, 11, 16, 18];
+    let malIdx = 0;
+    captureInterval = setInterval(() => {
+      tick++;
+      if (maliciousSlots.includes(tick) && malIdx < maliciousPackets.length) {
+        addPacket(maliciousPackets[malIdx++]);
+      } else {
+        addPacket(normalPackets[Math.floor(Math.random() * normalPackets.length)]);
+      }
+      if (tick >= 40) {
+        clearInterval(captureInterval);
+        captureInterval = null;
+        startBtn.textContent = '▶ Capture Complete (40 packets)';
+        startBtn.style.background = 'linear-gradient(135deg,#22d3ee,#0ea5e9)';
+      }
+    }, 500);
+  });
+}
+
 function setTheme(theme) {
   document.body.classList.remove('theme-hacker', 'theme-light', 'theme-pink', 'theme-default');
   if (theme !== 'theme-default' && theme !== 'default') {
@@ -2554,7 +3274,8 @@ const MODULE_TITLE_KEYS = {
   'nmap':       { en: 'mod_nmap', ar: 'mod_nmap' },
   'hydra':      { en: 'mod_hydra', ar: 'mod_hydra' },
   'xss':        { en: 'mod_xss', ar: 'mod_xss' },
-  'soc-simulator': { en: 'mod_soc', ar: 'mod_soc' }
+  'soc-simulator': { en: 'mod_soc', ar: 'mod_soc' },
+  'net-analyst':   { en: 'mod_net', ar: 'mod_net' }
 };
 
 let currentLanguage = 'en';
@@ -2820,7 +3541,9 @@ window.__app = {
   setLanguage,
   factoryReset,
   handleNmapCommand,
-  handleHydraCommand
+  handleHydraCommand,
+  handleSqlmapCommand,
+  initPacketLab
 };
 
 window.TUTORIALS = {};

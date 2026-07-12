@@ -205,32 +205,32 @@
   },
   "xss-search": {
     "challengeKey": "xssTierOneChallenge",
-    "name": "Reflected XSS (Search)",
+    "name": "Reflected XSS: Basic Injection",
     "module": "xss",
-    "description": "Execute a basic Cross-Site Scripting attack via the Juice Shop search field.",
+    "description": "Execute a basic Cross-Site Scripting attack using the XSS Sandbox Simulator.",
     "steps": [
       {
-        "text": "We will test the search functionality for XSS. Look at the top navigation bar and click the magnifying glass search icon.",
-        "selector": "[aria-label='Search']",
+        "text": "Let's test the search functionality for XSS. Click in the payload input field.",
+        "selector": "#xssPayloadInput",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "A search bar has appeared. Type the XSS payload exactly: <b>&lt;iframe src=\"javascript:alert(`xss`)\"&gt;</b>",
-        "selector": "input[aria-label='Search...']",
+        "text": "Type the standard XSS payload exactly: <b>&lt;script&gt;alert(1)&lt;/script&gt;</b>",
+        "selector": "#xssPayloadInput",
         "action": "input",
-        "waitForValue": "<iframe src=\"javascript:alert(`xss`)\">",
+        "waitForValue": "<script>alert(1)</script>",
         "position": "bottom"
       },
       {
-        "text": "Now press Enter to execute the search. The payload will be reflected into the page and trigger XSS!",
-        "selector": "input[aria-label='Search...']",
-        "action": "enter",
+        "text": "Now click Inject to send the payload to the server.",
+        "selector": "#xssInjectBtn",
+        "action": "click",
         "position": "bottom"
       },
       {
-        "text": "Look at the search results area — if you see an embedded iframe or the page behaves unexpectedly, that confirms a Reflected XSS vulnerability! The application did not sanitize your input before rendering it. Click anywhere to finish.",
-        "selector": "body",
+        "text": "Look at the result below! The application reflected your input without sanitization, allowing your script tag to execute in the iframe. You have successfully triggered XSS. Click anywhere to finish.",
+        "selector": "#xssResult",
         "action": "click",
         "position": "center"
       }
@@ -238,32 +238,32 @@
   },
   "xss-dom": {
     "challengeKey": "domXssChallenge",
-    "name": "DOM-Based XSS",
+    "name": "XSS: Image Error Vector",
     "module": "xss",
-    "description": "Trigger XSS via client-side DOM manipulation without server involvement.",
+    "description": "Trigger XSS using an image tag with an onerror event handler to bypass basic script filters.",
     "steps": [
       {
-        "text": "DOM XSS happens entirely in the browser — no server involved. Click the search icon in the top navigation.",
-        "selector": "[aria-label='Search']",
+        "text": "Many sites filter out &lt;script&gt; tags. Let's use an alternate vector: an image tag. Click the payload input field.",
+        "selector": "#xssPayloadInput",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "This time we use the same iframe payload, but the attack vector is different. Angular's client-side router reflects the URL hash directly into the DOM. Type: <b>&lt;iframe src=\"javascript:alert(`xss`)\"&gt;</b>",
-        "selector": "input[aria-label='Search...']",
+        "text": "Type this payload: <b>&lt;img src=x onerror=alert('XSS')&gt;</b>",
+        "selector": "#xssPayloadInput",
         "action": "input",
-        "waitForValue": "<iframe src=\"javascript:alert(`xss`)\">",
+        "waitForValue": "<img src=x onerror=alert('XSS')>",
         "position": "bottom"
       },
       {
-        "text": "Press Enter. Since the search query is included in the URL hash, Angular processes it locally and renders your payload into the DOM — triggering DOM-based XSS!",
-        "selector": "input[aria-label='Search...']",
-        "action": "enter",
+        "text": "Click Inject. The browser will try to load the invalid image source 'x', fail, and then execute our malicious onerror JavaScript handler instead!",
+        "selector": "#xssInjectBtn",
+        "action": "click",
         "position": "bottom"
       },
       {
-        "text": "DOM-based XSS is harder to detect because the malicious payload never reaches the server — it's processed entirely by client-side JavaScript. Click anywhere to finish.",
-        "selector": "body",
+        "text": "The payload executed! This demonstrates why filtering just script tags is never enough — all user input must be HTML encoded. Click anywhere to finish.",
+        "selector": "#xssResult",
         "action": "click",
         "position": "center"
       }
@@ -461,6 +461,121 @@
       {
         "text": "Press Enter to launch the FTP brute force attack!",
         "selector": "#hydraSimInput",
+        "action": "enter",
+        "position": "bottom"
+      }
+    ]
+  },
+  "sqlmap-basic": {
+    "challengeKey": "sqlmapBasicChallenge",
+    "name": "SQLmap: Detect & Enumerate Databases",
+    "module": "sqlmap",
+    "description": "Use the SQLmap simulator to detect SQL injection and list all databases on the target.",
+    "steps": [
+      {
+        "text": "Welcome to the SQLmap Simulator! First, let's see the help output to understand the tool. Type: sqlmap --help",
+        "selector": "#sqlmapSimInput",
+        "action": "input",
+        "waitForValue": "sqlmap --help",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to see SQLmap's full usage guide.",
+        "selector": "#sqlmapSimInput",
+        "action": "enter",
+        "position": "bottom"
+      },
+      {
+        "text": "Now let's point SQLmap at a vulnerable URL. The -u flag sets the target URL. Type: sqlmap -u \"http://target.com/item?id=1\"",
+        "selector": "#sqlmapSimInput",
+        "action": "input",
+        "waitForValue": "sqlmap -u \"http://target.com/item?id=1\"",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to run the scan. SQLmap will test the 'id' parameter for injection vulnerabilities.",
+        "selector": "#sqlmapSimInput",
+        "action": "enter",
+        "position": "bottom"
+      },
+      {
+        "text": "SQLmap confirmed the vulnerability! Now let's list all databases with --dbs. Type: sqlmap -u \"http://target.com/item?id=1\" --dbs",
+        "selector": "#sqlmapSimInput",
+        "action": "input",
+        "waitForValue": "sqlmap -u \"http://target.com/item?id=1\" --dbs",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to enumerate the databases!",
+        "selector": "#sqlmapSimInput",
+        "action": "enter",
+        "position": "bottom"
+      }
+    ]
+  },
+  "sqlmap-tables": {
+    "challengeKey": "sqlmapTablesChallenge",
+    "name": "SQLmap: Extract Tables from a Database",
+    "module": "sqlmap",
+    "description": "Once you know the database name, use SQLmap to enumerate all tables inside it.",
+    "steps": [
+      {
+        "text": "We found the database is called 'shopdb'. Now we enumerate its tables with -D and --tables. Type: sqlmap -u \"http://target.com/item?id=1\" -D shopdb --tables",
+        "selector": "#sqlmapSimInput",
+        "action": "input",
+        "waitForValue": "sqlmap -u \"http://target.com/item?id=1\" -D shopdb --tables",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter. SQLmap will extract the table names from the shopdb database.",
+        "selector": "#sqlmapSimInput",
+        "action": "enter",
+        "position": "bottom"
+      },
+      {
+        "text": "We found a 'users' table! Now let's dump it with -T and --dump. Type: sqlmap -u \"http://target.com/item?id=1\" -D shopdb -T users --dump",
+        "selector": "#sqlmapSimInput",
+        "action": "input",
+        "waitForValue": "sqlmap -u \"http://target.com/item?id=1\" -D shopdb -T users --dump",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to dump the users table!",
+        "selector": "#sqlmapSimInput",
+        "action": "enter",
+        "position": "bottom"
+      }
+    ]
+  },
+  "sqlmap-fingerprint": {
+    "challengeKey": "sqlmapFingerprintChallenge",
+    "name": "SQLmap: Database Fingerprinting",
+    "module": "sqlmap",
+    "description": "Gather intelligence about the target DBMS — version, current user, and current database.",
+    "steps": [
+      {
+        "text": "Before dumping data, it's good practice to fingerprint the DBMS. Let's get the banner (DB version). Type: sqlmap -u \"http://target.com/item?id=1\" --banner",
+        "selector": "#sqlmapSimInput",
+        "action": "input",
+        "waitForValue": "sqlmap -u \"http://target.com/item?id=1\" --banner",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to retrieve the database banner.",
+        "selector": "#sqlmapSimInput",
+        "action": "enter",
+        "position": "bottom"
+      },
+      {
+        "text": "Now get the current database user (to check privileges). Type: sqlmap -u \"http://target.com/item?id=1\" --current-user --current-db",
+        "selector": "#sqlmapSimInput",
+        "action": "input",
+        "waitForValue": "sqlmap -u \"http://target.com/item?id=1\" --current-user --current-db",
+        "position": "bottom"
+      },
+      {
+        "text": "Press Enter to get the current DB user and database name!",
+        "selector": "#sqlmapSimInput",
         "action": "enter",
         "position": "bottom"
       }
