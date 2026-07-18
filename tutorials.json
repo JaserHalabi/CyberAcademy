@@ -1,47 +1,139 @@
 {
   "proxy-intercept": {
     "challengeKey": "proxyInterceptChallenge",
-    "name": "Proxy Intercept (Admin Login)",
+    "name": "Proxy Intercept: SQLi Bypass",
     "module": "burp-proxy",
-    "description": "Learn how to use the Mini Proxy Interceptor to modify a request in transit.",
+    "description": "Learn how to use the Mini Proxy Interceptor to pause a request and modify it in transit.",
     "steps": [
       {
-        "text": "Welcome to the Proxy Intercept tutorial! First, we need to navigate to the Login page. Click the 'Account' button in the top navigation bar.",
-        "selector": "#navbarAccount",
+        "text": "Welcome to the Proxy Intercept tutorial! First, click the Email field.",
+        "selector": "#burpLabEmail",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "Click 'Login' to go to the authentication page.",
-        "selector": "#navbarLoginButton",
-        "action": "click",
-        "position": "bottom"
-      },
-      {
-        "text": "In the Email field, type a regular admin email: admin@juice-sh.op",
-        "selector": "#email",
+        "text": "The default email is fine for now.",
+        "selector": "#burpLabEmail",
         "action": "input",
-        "waitForValue": "admin@juice-sh.op",
+        "waitForValue": "user@company.com",
         "position": "right"
       },
       {
-        "text": "Type any password in the Password field.",
-        "selector": "#password",
+        "text": "Click the Submit button. Notice that Intercept is ON, so the request will not go to the server immediately.",
+        "selector": "#burpLabSubmit",
+        "action": "click",
+        "position": "right"
+      },
+      {
+        "text": "The request has been paused! Look at the Intercept window. You'll see the raw HTTP POST request. Let's change the email parameter to a SQL injection payload to bypass the login. Change user@company.com to admin@company.com'--",
+        "selector": "#burpLabIntercepted",
         "action": "input",
-        "waitForValue": "password",
-        "position": "right"
-      },
-      {
-        "text": "Before you click Log in, ensure the Intercept is ON in your Mini Proxy window. Then click 'Log in'.",
-        "selector": "#loginButton",
-        "action": "click",
-        "position": "right"
-      },
-      {
-        "text": "The request has been paused! Look at the Mini Proxy Intercept window. You'll see the raw HTTP POST request. Find the email parameter in the body and change it to admin@juice-sh.op'--. Then click Forward!",
-        "selector": "body",
-        "action": "click",
+        "waitForValue": "admin@company.com'--",
         "position": "center"
+      },
+      {
+        "text": "Now click Forward to send the modified request to the server!",
+        "selector": "#burpLabForward",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Success! The server processed the modified request and granted you admin access because of the SQL injection. Click anywhere to finish.",
+        "selector": "#burpLabResponse",
+        "action": "click",
+        "position": "bottom"
+      }
+    ]
+  },
+  "proxy-drop": {
+    "challengeKey": "proxyDropChallenge",
+    "name": "Proxy Intercept: Drop Request",
+    "module": "burp-proxy",
+    "description": "Learn how to block malicious or unwanted requests from reaching the server.",
+    "steps": [
+      {
+        "text": "Sometimes you want to completely block a request from leaving your browser. Click Submit to capture another login request.",
+        "selector": "#burpLabSubmit",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "The request is caught again. This time, instead of modifying or forwarding it, click the Drop button to destroy the request.",
+        "selector": "#burpLabDrop",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "The request was successfully dropped. The server never saw it! Click anywhere to finish.",
+        "selector": "#burpLabResponse",
+        "action": "click",
+        "position": "bottom"
+      }
+    ]
+  },
+  "proxy-tamper": {
+    "challengeKey": "proxyTamperChallenge",
+    "name": "Proxy Intercept: Parameter Tampering",
+    "module": "burp-proxy",
+    "description": "Learn how to intercept and modify API parameters to manipulate server logic (e.g., getting items for free).",
+    "steps": [
+      {
+        "text": "Parameter tampering is a classic exploit where you change data sent to the server. Let's try to get a laptop for free! Click 'Checkout (Intercept ON)' in the Shopping Cart.",
+        "selector": "#burpLabCartSubmit",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "The checkout request is intercepted. Look at the JSON payload in the body. Find the 'price' parameter and change it to 0 or a negative number.",
+        "selector": "#burpLabIntercepted",
+        "action": "input",
+        "waitForValue": "\"price\": 0",
+        "position": "center"
+      },
+      {
+        "text": "Now click Forward to send your manipulated price to the server.",
+        "selector": "#burpLabForward",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Success! The server didn't validate the price parameter on the backend and processed the purchase for $0. Click anywhere to finish.",
+        "selector": "#burpLabResponse",
+        "action": "click",
+        "position": "bottom"
+      }
+    ]
+  },
+  "proxy-headers": {
+    "challengeKey": "proxyHeadersChallenge",
+    "name": "Proxy Intercept: Header Manipulation",
+    "module": "burp-proxy",
+    "description": "Learn how to bypass access controls by manipulating HTTP headers like X-Forwarded-For.",
+    "steps": [
+      {
+        "text": "Servers often use HTTP headers to restrict access. Let's try to access the Admin Portal. Click 'Access Portal (Intercept ON)'.",
+        "selector": "#burpLabAdminSubmit",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "The request is caught. The server blocks external IPs, but we can spoof our IP using the X-Forwarded-For header. Add this exact line anywhere in the headers: X-Forwarded-For: 127.0.0.1",
+        "selector": "#burpLabIntercepted",
+        "action": "input",
+        "waitForValue": "X-Forwarded-For: 127.0.0.1",
+        "position": "center"
+      },
+      {
+        "text": "With the spoofed IP header injected, click Forward to send the request.",
+        "selector": "#burpLabForward",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Access granted! The server trusted the X-Forwarded-For header and allowed you into the portal. Click anywhere to finish.",
+        "selector": "#burpLabResponse",
+        "action": "click",
+        "position": "bottom"
       }
     ]
   },
@@ -49,157 +141,98 @@
     "challengeKey": "loginAdminChallenge",
     "name": "SQL Injection (Admin Login)",
     "module": "sqli",
-    "description": "Learn how to bypass authentication using a SQL Injection vulnerability.",
+    "description": "Learn how to bypass authentication using a simple SQL Injection vulnerability.",
     "steps": [
       {
-        "text": "Welcome to the SQL Injection tutorial! First, we need to navigate to the Login page. Click the 'Account' button in the top navigation bar.",
-        "selector": "#navbarAccount",
+        "text": "Welcome to the SQL Injection tutorial! We will attack the simulated login form below. Click into the EMAIL field.",
+        "selector": "#sqliEmail",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "Great! Now click 'Login' to go to the authentication page.",
-        "selector": "#navbarLoginButton",
+        "text": "We will try to log in as admin without knowing the password. Type exactly: admin'--",
+        "selector": "#sqliEmail",
+        "action": "input",
+        "waitForValue": "admin'--",
+        "position": "right"
+      },
+      {
+        "text": "The single quote (') closes the SQL string early, and the dashes (--) comment out the rest of the query (including the password check). Now click Submit Injection.",
+        "selector": "#sqliSubmit",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "We're on the login page. In the Email field, we will inject a SQL payload. Type exactly: admin@juice-sh.op'--",
-        "selector": "#email",
-        "action": "input",
-        "waitForValue": "admin@juice-sh.op'--",
-        "position": "right"
-      },
-      {
-        "text": "The single quote (') closes the SQL string early, and the dashes (--) comment out the rest of the query (including the password check). Now click into the Password field.",
-        "selector": "#password",
-        "action": "focus",
-        "position": "right"
-      },
-      {
-        "text": "Since the password check is commented out by our payload, you can type any random password here. Type 'password'.",
-        "selector": "#password",
-        "action": "input",
-        "waitForValue": "password",
-        "position": "right"
-      },
-      {
-        "text": "Perfect! The database will ignore the password. Click the 'Log in' button to execute the attack.",
-        "selector": "#loginButton",
+        "text": "Authentication Bypassed! You are logged in as admin. Look at the Generated SQL below to see how your payload manipulated the query.",
+        "selector": "#sqliResponse",
         "action": "click",
-        "position": "right"
+        "position": "bottom"
       }
     ]
   },
-  "sqli-bender": {
+  "sqli-bypass": {
     "challengeKey": "loginBenderChallenge",
-    "name": "SQL Injection (Bender Login)",
+    "name": "SQL Injection (Always True Bypass)",
     "module": "sqli",
-    "description": "Use the same SQLi technique to compromise another user account.",
+    "description": "Use a Boolean 'Always True' technique to compromise the first account in the database.",
     "steps": [
       {
-        "text": "Let's compromise Bender's account using the same SQL Injection technique. Click the 'Account' button.",
-        "selector": "#navbarAccount",
+        "text": "Let's try another classic payload. What if we don't know any usernames at all? We can use an OR condition that is always true. Click the EMAIL field.",
+        "selector": "#sqliEmail",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "Click 'Login' to go to the authentication page.",
-        "selector": "#navbarLoginButton",
+        "text": "Type exactly: ' OR 1=1--",
+        "selector": "#sqliEmail",
+        "action": "input",
+        "waitForValue": "' OR 1=1--",
+        "position": "right"
+      },
+      {
+        "text": "This payload closes the string and adds an OR condition (1=1) which is universally true, bypassing the entire WHERE clause. Click Submit Injection.",
+        "selector": "#sqliSubmit",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "In the Email field, target Bender's account. Type exactly: bender@juice-sh.op'--",
-        "selector": "#email",
-        "action": "input",
-        "waitForValue": "bender@juice-sh.op'--",
-        "position": "right"
-      },
-      {
-        "text": "Now click into the Password field.",
-        "selector": "#password",
-        "action": "focus",
-        "position": "right"
-      },
-      {
-        "text": "Type any password — it will be ignored by the database.",
-        "selector": "#password",
-        "action": "input",
-        "waitForValue": "password",
-        "position": "right"
-      },
-      {
-        "text": "Click 'Log in' to access Bender's account!",
-        "selector": "#loginButton",
+        "text": "Success! The query evaluated to true for every row in the database, usually logging you in as the very first user (often the admin). Click anywhere to finish.",
+        "selector": "#sqliResponse",
         "action": "click",
-        "position": "right"
+        "position": "bottom"
       }
     ]
   },
-  "sqli-error": {
+  "sqli-union": {
     "challengeKey": "errorHandlingChallenge",
-    "name": "Error-Based SQL Injection",
+    "name": "UNION-based SQL Injection",
     "module": "sqli",
-    "description": "Provoke a database error to confirm SQL injection vulnerability exists.",
+    "description": "Use the UNION operator to combine the results of the original query with data from other tables.",
     "steps": [
       {
-        "text": "We can confirm SQL injection exists by intentionally breaking a query. Click the search icon in the top bar.",
-        "selector": "mat-search-bar button",
+        "text": "SQL Injection isn't just for bypassing logins. You can steal data from other tables using UNION SELECT! Click the EMAIL field.",
+        "selector": "#sqliEmail",
         "action": "click",
         "position": "bottom"
       },
       {
-        "text": "A single quote (') usually breaks SQL syntax. Type a single quote character: '",
-        "selector": "#searchQuery",
+        "text": "Let's assume we know there are 3 columns in the query. Type exactly: ' UNION SELECT 1,username,password FROM users--",
+        "selector": "#sqliEmail",
         "action": "input",
-        "waitForValue": "'",
+        "waitForValue": "' UNION SELECT 1,username,password FROM users--",
         "position": "bottom"
       },
       {
-        "text": "Before we press Enter, ensure Intercept is OFF on your Mini Proxy. Then press Enter in the search box to trigger the search.",
-        "selector": "#searchQuery",
-        "action": "enter",
+        "text": "This payload tells the database to fetch the username and password columns from the users table and append them to the results. Click Submit Injection.",
+        "selector": "#sqliSubmit",
+        "action": "click",
         "position": "bottom"
       },
       {
-        "text": "The UI handles the error silently, but if you look at the raw network response, you'll see a SQLITE_ERROR. This proves the backend is directly concatenating your input into SQL!",
-        "selector": "body",
+        "text": "Boom! The server returned the entire user database, including hashed passwords! Click anywhere to finish.",
+        "selector": "#sqliResponse",
         "action": "click",
         "position": "center"
-      }
-    ]
-  },
-  "score-board": {
-    "challengeKey": "scoreBoardChallenge",
-    "name": "Find the Score Board",
-    "module": "burp-proxy",
-    "description": "The Score Board is hidden. We need to find the correct path.",
-    "steps": [
-      {
-        "text": "The Score Board link is not in the menu. But we can navigate to it directly if we know the path. Click the search button to open the search bar.",
-        "selector": "mat-search-bar button",
-        "action": "click",
-        "position": "bottom"
-      },
-      {
-        "text": "Instead of searching, we will just manually change the URL. Actually, for this tutorial, I'll reveal the path: it's /#/score-board. Click anywhere to continue.",
-        "selector": "body",
-        "action": "click",
-        "position": "center"
-      },
-      {
-        "text": "Let's use the search box to trigger it anyway. Type 'score-board'.",
-        "selector": "#searchQuery",
-        "action": "input",
-        "waitForValue": "score-board",
-        "position": "bottom"
-      },
-      {
-        "text": "Press Enter to search. Then we will manually navigate there.",
-        "selector": "#searchQuery",
-        "action": "enter",
-        "position": "bottom"
       }
     ]
   },
@@ -264,38 +297,6 @@
       {
         "text": "The payload executed! This demonstrates why filtering just script tags is never enough — all user input must be HTML encoded. Click anywhere to finish.",
         "selector": "#xssResult",
-        "action": "click",
-        "position": "center"
-      }
-    ]
-  },
-  "idor-basket": {
-    "challengeKey": "basketAccessChallenge",
-    "name": "IDOR: View Another Basket",
-    "module": "burp-proxy",
-    "description": "Exploit an Insecure Direct Object Reference to view another user's shopping basket.",
-    "steps": [
-      {
-        "text": "Log in first (you can use your SQLi skills!). Once logged in, click your Basket icon.",
-        "selector": "button[aria-label='Show the shopping cart']",
-        "action": "click",
-        "position": "bottom"
-      },
-      {
-        "text": "Now, ensure Intercept is ON in your Mini Proxy.",
-        "selector": "body",
-        "action": "click",
-        "position": "center"
-      },
-      {
-        "text": "Add any item to your basket to trigger a request.",
-        "selector": "button[aria-label='Add to Basket']",
-        "action": "click",
-        "position": "bottom"
-      },
-      {
-        "text": "Look at the intercepted request. You will see your basket ID in the URL or Body. Change that ID to '1' or '2' and click Forward!",
-        "selector": "body",
         "action": "click",
         "position": "center"
       }
@@ -578,6 +579,138 @@
         "selector": "#sqlmapSimInput",
         "action": "enter",
         "position": "bottom"
+      }
+    ]
+  },
+  "net-ftp": {
+    "challengeKey": "netFtpChallenge",
+    "name": "CTF: Hunt Cleartext Passwords",
+    "module": "net-analyst",
+    "description": "Learn how to filter a massive packet capture to find plaintext FTP credentials.",
+    "steps": [
+      {
+        "text": "Welcome to the Network Traffic CTF! First, start the live packet stream.",
+        "selector": "#packetStartCapture",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Notice the massive amount of background noise. Let's isolate FTP traffic. Type 'ftp' into the filter bar.",
+        "selector": "#packetFilter",
+        "action": "input",
+        "waitForValue": "ftp",
+        "position": "bottom"
+      },
+      {
+        "text": "Click Apply to filter the stream.",
+        "selector": "#packetFilterBtn",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "We found an FTP packet! Click it to inspect its payload and capture the flag.",
+        "selector": "#packetList div:first-child",
+        "action": "click",
+        "position": "center"
+      }
+    ]
+  },
+  "net-sqli": {
+    "challengeKey": "netSqliChallenge",
+    "name": "CTF: Detect SQL Injection",
+    "module": "net-analyst",
+    "description": "Learn how to spot a SQL injection attack attempting to steal database records over HTTP.",
+    "steps": [
+      {
+        "text": "Start the live packet stream.",
+        "selector": "#packetStartCapture",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "We suspect a web attack. Filter the traffic for HTTP by typing 'http'.",
+        "selector": "#packetFilter",
+        "action": "input",
+        "waitForValue": "http",
+        "position": "bottom"
+      },
+      {
+        "text": "Click Apply to filter the stream.",
+        "selector": "#packetFilterBtn",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "You will see several normal HTTP packets and one malicious one containing a UNION SELECT payload. Click the malicious packet to neutralize the threat!",
+        "selector": "#packetList div:last-child",
+        "action": "click",
+        "position": "center"
+      }
+    ]
+  },
+  "net-beacon": {
+    "challengeKey": "netBeaconChallenge",
+    "name": "CTF: Isolate C2 Beacons",
+    "module": "net-analyst",
+    "description": "Learn how to use TCP port filters to isolate Command and Control (C2) malware beacons.",
+    "steps": [
+      {
+        "text": "Start the live packet stream.",
+        "selector": "#packetStartCapture",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Malware often communicates over known ports like 4444. Let's filter for this port. Type exactly: tcp.dstport==4444",
+        "selector": "#packetFilter",
+        "action": "input",
+        "waitForValue": "tcp.dstport==4444",
+        "position": "bottom"
+      },
+      {
+        "text": "Click Apply.",
+        "selector": "#packetFilterBtn",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Perfect isolation! Click the C2 beacon packet to flag the compromised host.",
+        "selector": "#packetList div:first-child",
+        "action": "click",
+        "position": "center"
+      }
+    ]
+  },
+  "net-dns": {
+    "challengeKey": "netDnsChallenge",
+    "name": "CTF: Spot DNS Exfiltration",
+    "module": "net-analyst",
+    "description": "Detect data being smuggled out of the network via massive encoded DNS requests.",
+    "steps": [
+      {
+        "text": "Start the live packet stream.",
+        "selector": "#packetStartCapture",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "DNS exfiltration creates huge subdomains. First, filter for DNS traffic by typing 'dns'.",
+        "selector": "#packetFilter",
+        "action": "input",
+        "waitForValue": "dns",
+        "position": "bottom"
+      },
+      {
+        "text": "Click Apply.",
+        "selector": "#packetFilterBtn",
+        "action": "click",
+        "position": "bottom"
+      },
+      {
+        "text": "Look through the filtered DNS list for the packet with a massively long, random-looking subdomain (evil-c2.net). Click it to capture the final flag!",
+        "selector": "#packetList div:last-child",
+        "action": "click",
+        "position": "center"
       }
     ]
   }

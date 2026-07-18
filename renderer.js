@@ -3020,7 +3020,7 @@ function initPacketLab() {
     const filter = getFilter();
     listEl.innerHTML = '';
     allPackets.forEach((p, i) => {
-      if (matchesFilter(p, filter)) {
+      if (matchesFilter(p.pkt, filter)) {
         listEl.appendChild(renderPacket(p.pkt, p.num, p.ts));
       }
     });
@@ -3030,6 +3030,20 @@ function initPacketLab() {
   if (filterBtn) filterBtn.addEventListener('click', redrawFiltered);
   if (filterInput) filterInput.addEventListener('keydown', e => { if (e.key === 'Enter') redrawFiltered(); });
   if (clearFilterBtn) clearFilterBtn.addEventListener('click', () => { if (filterInput) filterInput.value = ''; redrawFiltered(); });
+
+  // Hook up Quick Filters
+  document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (filterInput) {
+        if (filterInput.value.trim() && !filterInput.value.trim().endsWith('or')) {
+          filterInput.value = filterInput.value.trim() + ' or ' + btn.innerText;
+        } else {
+          filterInput.value = btn.innerText;
+        }
+        redrawFiltered();
+      }
+    });
+  });
 
   function addPacket(pkt) {
     packetIndex++;
